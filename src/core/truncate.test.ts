@@ -14,8 +14,8 @@ describe("truncate", () => {
     expect(truncate("Hi", 1)).toBe("…");
   });
 
-  it("returns empty string when maxLen is 0", () => {
-    expect(truncate("Hi", 0)).toBe("");
+  it("returns ellipsis alone when maxLen is 0", () => {
+    expect(truncate("Hi", 0)).toBe("…");
   });
 
   it("handles empty string", () => {
