@@ -1,6 +1,7 @@
 import type { Component } from "@mariozechner/pi-tui";
 import { visibleWidth } from "@mariozechner/pi-tui";
 import { truncate } from "../core/truncate";
+import { padLine } from "../core/pad-line";
 
 export type BorderStyle = "single" | "singleRounded" | "double" | "heavy";
 export type TitleAlign = "left" | "right" | "center";
@@ -34,11 +35,6 @@ const BORDER_CHARS: Record<
   double: { tl: "╔", tr: "╗", bl: "╚", br: "╝", h: "═", v: "║" },
   heavy: { tl: "┏", tr: "┓", bl: "┗", br: "┛", h: "━", v: "┃" },
 };
-
-function padLine(line: string, targetWidth: number): string {
-  const padNeeded = Math.max(0, targetWidth - visibleWidth(line));
-  return line + " ".repeat(padNeeded);
-}
 
 function validateTitles(titles: TitleDef[]): void {
   if (titles.length > 2) throw new Error("BorderBox: max 2 titles");
