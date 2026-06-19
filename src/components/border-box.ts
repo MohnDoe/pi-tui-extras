@@ -1,5 +1,6 @@
 import type { Component } from "@mariozechner/pi-tui";
 import { visibleWidth } from "@mariozechner/pi-tui";
+import { truncate } from "../core/truncate";
 
 export type BorderStyle = "single" | "singleRounded" | "double" | "heavy";
 export type TitleAlign = "left" | "right" | "center";
@@ -33,16 +34,6 @@ const BORDER_CHARS: Record<
   double: { tl: "╔", tr: "╗", bl: "╚", br: "╝", h: "═", v: "║" },
   heavy: { tl: "┏", tr: "┓", bl: "┗", br: "┛", h: "━", v: "┃" },
 };
-
-/** Truncate a string to fit maxLen visible chars, appending "…" if needed. */
-function truncate(s: string, maxLen: number): string {
-  if (visibleWidth(s) <= maxLen) return s;
-  let result = s;
-  while (visibleWidth(result + "…") > maxLen && result.length > 0) {
-    result = result.slice(0, -1);
-  }
-  return result + "…";
-}
 
 function padLine(line: string, targetWidth: number): string {
   const padNeeded = Math.max(0, targetWidth - visibleWidth(line));
