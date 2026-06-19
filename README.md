@@ -49,6 +49,61 @@ new BorderBox(new Text("Hello", 1, 0), {
 | `titles` / `footers` | `TitleDef[]` (max 2)                         | —        | Text in top/bottom border                        |
 | `padding`            | `{left?,right?,top?,bottom?}`                | —        | Inner spacing                                    |
 
+#### Examples
+
+##### Standard box
+
+```ts
+new BorderBox(new Text("Hello from BorderBox!", 1, 0), {
+  titles: [{ text: "Demo", align: "left" }],
+});
+// result
+┌─ Demo ─────────────────────────────────────────────────┐
+│ Hello from BorderBox!                                  │
+└────────────────────────────────────────────────────────┘
+```
+
+##### Titles and centered footer
+
+```ts
+new BorderBox(new Text("Rounded corners", 0, 0), {
+  borderStyle: "singleRounded",
+  titles: [
+    { text: "Left title", align: "left" },
+    { text: "Right", align: "right" },
+  ],
+  footers: [{ text: "Footer but centered", align: "center" }],
+  padding: {
+    left: 1,
+  },
+}),
+// result
+╭─ Left title ────────────────────────────────── Right ─╮
+│ Rounded corners                                       │
+╰───────────────── Footer but centered ─────────────────╯
+```
+
+##### Double border, no titles or footers, and some padding
+
+```ts
+new BorderBox(new Text("No title, no footer but paddings!", 0, 0), {
+  borderStyle: "double",
+  padding: {
+    top: 3,
+    left: 2,
+    bottom: 1,
+  },
+}),
+// result
+╔════════════════════════════════════════════════════════╗
+║                                                        ║
+║                                                        ║
+║                                                        ║
+║  No title, no footer but paddings!                     ║
+║                                                        ║
+╚════════════════════════════════════════════════════════╝
+```
+
 ### Core utilities
 
 | Export                                       | Description                     |
