@@ -39,6 +39,13 @@ const BORDER_CHARS: Record<
 
 export const TITLE_MIN_WIDTH = 1;
 
+/** Decor "─ text ─" overhead: h + space + space + h = 4 visible chars. */
+const DECOR_OVERHEAD = 4;
+/** Tight decor "─…─" overhead: h + h = 2 visible chars (no spaces). */
+const DECOR_TIGHT_OVERHEAD = 2;
+/** Left-text room heuristic for LR pair: accounts for both decor overheads + gap. */
+const LR_LEFT_OVERHEAD = 6;
+
 function validateTitles(titles: TitleDef[]): void {
   if (titles.length > 2) throw new Error("BorderBox: max 2 titles");
   if (titles.length === 2) {
@@ -84,11 +91,11 @@ function buildBorderLine(opts: BorderLineOptions): string {
     // If decor overflows, truncate title and retry
     let finalDecor: string;
     if (fill === 0) {
-      const maxText = Math.max(TITLE_MIN_WIDTH, innerWidth - 4);
+      const maxText = Math.max(TITLE_MIN_WIDTH, innerWidth - DECOR_OVERHEAD);
       const truncated = truncate(d.text, maxText);
       // If still overflows, drop spaces around title
-      if (innerWidth < 4) {
-        finalDecor = `${h}${truncate(d.text, Math.max(1, innerWidth - 2))}${h}`;
+      if (innerWidth < DECOR_OVERHEAD) {
+        finalDecor = `${h}${truncate(d.text, Math.max(TITLE_MIN_WIDTH, innerWidth - DECOR_TIGHT_OVERHEAD))}${h}`;
       } else {
         finalDecor = `${h} ${truncated} ${h}`;
       }
@@ -102,10 +109,10 @@ function buildBorderLine(opts: BorderLineOptions): string {
   // length === 2: left + right
   const leftDef = defs[0]!;
   const rightDef = defs[1]!;
-  const leftText = truncate(leftDef.text, Math.max(1, innerWidth - 6));
+  const leftText = truncate(leftDef.text, Math.max(TITLE_MIN_WIDTH, innerWidth - LR_LEFT_OVERHEAD));
   const rightText = truncate(
     rightDef.text,
-    Math.max(1, innerWidth - visibleWidth(`─ ${leftText} ─`) - 4),
+    Math.max(TITLE_MIN_WIDTH, innerWidth - visibleWidth(`${h} ${leftText} ${h}`) - DECOR_OVERHEAD),
   );
   const leftDecor = `${h} ${leftText} ${h}`;
   const rightDecor = `${h} ${rightText} ${h}`;
