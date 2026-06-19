@@ -39,6 +39,7 @@ const BORDER_CHARS: Record<
 
 export const TITLE_MIN_WIDTH = 1;
 
+const MAX_TITLE_COUNT = 2;
 /** Decor "─ text ─" overhead: h + space + space + h = 4 visible chars. */
 const DECOR_OVERHEAD = 4;
 /** Tight decor "─…─" overhead: h + h = 2 visible chars (no spaces). */
@@ -47,8 +48,8 @@ const DECOR_TIGHT_OVERHEAD = 2;
 const LR_LEFT_OVERHEAD = 6;
 
 function validateTitles(titles: TitleDef[]): void {
-  if (titles.length > 2) throw new Error("BorderBox: max 2 titles");
-  if (titles.length === 2) {
+  if (titles.length > MAX_TITLE_COUNT) throw new Error("BorderBox: max 2 titles");
+  if (titles.length === MAX_TITLE_COUNT) {
     if (titles[0]!.align !== "left" || titles[1]!.align !== "right") {
       throw new Error("BorderBox: two titles must be left + right");
     }
