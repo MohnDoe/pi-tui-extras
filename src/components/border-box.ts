@@ -2,6 +2,7 @@ import type { Component } from "@mariozechner/pi-tui";
 import { visibleWidth } from "@mariozechner/pi-tui";
 import { truncate } from "../core/truncate";
 import { padLine } from "../core/pad-line";
+import { alignInWidth, alignInWidthLR } from "../core/align";
 
 export type BorderStyle = "single" | "singleRounded" | "double" | "heavy";
 export type TitleAlign = "left" | "right" | "center";
@@ -92,20 +93,8 @@ function buildBorderLine(opts: BorderLineOptions): string {
     } else {
       finalDecor = decor;
     }
-    const finalDecorW = visibleWidth(finalDecor);
-    const finalFill = Math.max(0, innerWidth - finalDecorW);
-
-    if (d.align === "left") {
-      return padLine(`${l}${finalDecor}${h.repeat(finalFill)}${r}`, totalWidth);
-    }
-    if (d.align === "right") {
-      return padLine(`${l}${h.repeat(finalFill)}${finalDecor}${r}`, totalWidth);
-    }
-    if (d.align === "center") {
-      const halfFill = Math.floor(finalFill / 2);
-      const rem = finalFill - halfFill;
-      return padLine(`${l}${h.repeat(halfFill)}${finalDecor}${h.repeat(rem)}${r}`, totalWidth);
-    }
+    const positioned = alignInWidth(finalDecor, innerWidth, d.align, h);
+    return padLine(`${l}${positioned}${r}`, totalWidth);
   }
 
   // length === 2: left + right
@@ -118,8 +107,8 @@ function buildBorderLine(opts: BorderLineOptions): string {
   );
   const leftDecor = `${h} ${leftText} ${h}`;
   const rightDecor = `${h} ${rightText} ${h}`;
-  const midFill = Math.max(0, innerWidth - visibleWidth(leftDecor) - visibleWidth(rightDecor));
-  return padLine(`${l}${leftDecor}${h.repeat(midFill)}${rightDecor}${r}`, totalWidth);
+  const positioned = alignInWidthLR(leftDecor, rightDecor, innerWidth, h);
+  return padLine(`${l}${positioned}${r}`, totalWidth);
 }
 
 export class BorderBox implements Component {
