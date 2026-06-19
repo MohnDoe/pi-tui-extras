@@ -1,61 +1,45 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { Text } from "@mariozechner/pi-tui";
 import { BorderBox } from "./border-box";
 
 describe("BorderBox", () => {
-  test("renders a single border around child text", () => {
+  it("renders a single border around child text", () => {
     const child = new Text("Hello", 0, 0);
     const box = new BorderBox(child);
 
     const lines = box.render(7); // "Hello" = 5 chars + 2 for borders
 
-    expect(lines).toEqual([
-      "┌─────┐",
-      "│Hello│",
-      "└─────┘",
-    ]);
+    expect(lines).toEqual(["┌─────┐", "│Hello│", "└─────┘"]);
   });
 
-  test("renders rounded border", () => {
+  it("renders rounded border", () => {
     const child = new Text("Hi", 0, 0);
     const box = new BorderBox(child, { borderStyle: "singleRounded" });
 
     const lines = box.render(4);
 
-    expect(lines).toEqual([
-      "╭──╮",
-      "│Hi│",
-      "╰──╯",
-    ]);
+    expect(lines).toEqual(["╭──╮", "│Hi│", "╰──╯"]);
   });
 
-  test("renders double border", () => {
+  it("renders double border", () => {
     const child = new Text("A", 0, 0);
     const box = new BorderBox(child, { borderStyle: "double" });
 
     const lines = box.render(3);
 
-    expect(lines).toEqual([
-      "╔═╗",
-      "║A║",
-      "╚═╝",
-    ]);
+    expect(lines).toEqual(["╔═╗", "║A║", "╚═╝"]);
   });
 
-  test("renders heavy border", () => {
+  it("renders heavy border", () => {
     const child = new Text("X", 0, 0);
     const box = new BorderBox(child, { borderStyle: "heavy" });
 
     const lines = box.render(3);
 
-    expect(lines).toEqual([
-      "┏━┓",
-      "┃X┃",
-      "┗━┛",
-    ]);
+    expect(lines).toEqual(["┏━┓", "┃X┃", "┗━┛"]);
   });
 
-  test("renders left-aligned title", () => {
+  it("renders left-aligned title", () => {
     const child = new Text("Hello", 0, 0);
     const box = new BorderBox(child, { titles: [{ text: "Title", align: "left" }] });
 
@@ -64,7 +48,7 @@ describe("BorderBox", () => {
     expect(lines[0]).toBe("┌─ Title ───┐");
   });
 
-  test("renders right-aligned title", () => {
+  it("renders right-aligned title", () => {
     const child = new Text("Hello", 0, 0);
     const box = new BorderBox(child, { titles: [{ text: "Title", align: "right" }] });
 
@@ -73,7 +57,7 @@ describe("BorderBox", () => {
     expect(lines[0]).toBe("┌─── Title ─┐");
   });
 
-  test("renders centered title", () => {
+  it("renders centered title", () => {
     const child = new Text("Hello", 0, 0);
     const box = new BorderBox(child, { titles: [{ text: "Title", align: "center" }] });
 
@@ -82,7 +66,7 @@ describe("BorderBox", () => {
     expect(lines[0]).toBe("┌── Title ──┐");
   });
 
-  test("renders left + right title pair", () => {
+  it("renders left + right title pair", () => {
     const child = new Text("Hello", 0, 0);
     const box = new BorderBox(child, {
       titles: [
@@ -97,7 +81,7 @@ describe("BorderBox", () => {
     expect(lines[0]).toBe("┌─ Left ─── Right ─┐");
   });
 
-  test("throws on invalid title combos", () => {
+  it("throws on invalid title combos", () => {
     const child = new Text("x", 0, 0);
 
     expect(
@@ -132,7 +116,7 @@ describe("BorderBox", () => {
     ).toThrow("BorderBox: two titles must be left + right");
   });
 
-  test("renders footer on bottom border", () => {
+  it("renders footer on bottom border", () => {
     const child = new Text("A", 0, 0);
     const box = new BorderBox(child, { footers: [{ text: "Foot", align: "left" }] });
 
@@ -141,7 +125,7 @@ describe("BorderBox", () => {
     expect(lines[2]).toBe("└─ Foot ─┘");
   });
 
-  test("applies custom padding", () => {
+  it("applies custom padding", () => {
     const child = new Text("Hi", 0, 0);
     const box = new BorderBox(child, {
       padding: { left: 2, right: 1, top: 1, bottom: 0 },
@@ -155,7 +139,7 @@ describe("BorderBox", () => {
     expect(lines[1]).toBe("│     │");
   });
 
-  test("colors border lines when borderColor is set", () => {
+  it("colors border lines when borderColor is set", () => {
     const child = new Text("X", 0, 0);
     const color = (s: string) => `<${s}>`;
     const box = new BorderBox(child, { borderColor: color });
@@ -167,7 +151,7 @@ describe("BorderBox", () => {
     expect(lines[2]).toBe("<└><─><┘>");
   });
 
-  test("caches render output for same width", () => {
+  it("caches render output for same width", () => {
     const child = new Text("Hi", 0, 0);
     const box = new BorderBox(child);
 
@@ -177,7 +161,7 @@ describe("BorderBox", () => {
     expect(first).toBe(second); // same array reference = cached
   });
 
-  test("invalidates cache on invalidate()", () => {
+  it("invalidates cache on invalidate()", () => {
     const child = new Text("Hi", 0, 0);
     const box = new BorderBox(child);
 
@@ -188,7 +172,7 @@ describe("BorderBox", () => {
     expect(first).not.toBe(second);
   });
 
-  test("truncates long titles to fit", () => {
+  it("truncates long titles to fit", () => {
     const child = new Text("X", 0, 0);
     const box = new BorderBox(child, {
       titles: [{ text: "VeryLongTitle", align: "left" }],
@@ -200,7 +184,7 @@ describe("BorderBox", () => {
     expect(lines[0]).toBe("┌─…─┐");
   });
 
-  test("handles empty child", () => {
+  it("handles empty child", () => {
     const child = new Text("", 0, 0);
     const box = new BorderBox(child);
 
@@ -209,7 +193,7 @@ describe("BorderBox", () => {
     expect(lines).toEqual(["┌─┐", "│ │", "└─┘"]);
   });
 
-  test("clamps negative padding to 0", () => {
+  it("clamps negative padding to 0", () => {
     const child = new Text("Hi", 0, 0);
     const box = new BorderBox(child, {
       padding: { left: -5, right: -5, top: -1, bottom: -1 },
@@ -218,10 +202,6 @@ describe("BorderBox", () => {
     // All clamped to 0 → same as no padding
     const lines = box.render(4);
 
-    expect(lines).toEqual([
-      "┌──┐",
-      "│Hi│",
-      "└──┘",
-    ]);
+    expect(lines).toEqual(["┌──┐", "│Hi│", "└──┘"]);
   });
 });

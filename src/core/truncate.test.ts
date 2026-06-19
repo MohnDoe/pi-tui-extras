@@ -1,24 +1,28 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { truncate } from "./truncate";
 
 describe("truncate", () => {
-  test("returns string unchanged when it fits within maxLen", () => {
+  it("returns string unchanged when it fits within maxLen", () => {
     expect(truncate("Hi", 5)).toBe("Hi");
   });
 
-  test("appends ellipsis when string exceeds maxLen", () => {
+  it("appends ellipsis when string exceeds maxLen", () => {
     expect(truncate("Hello World", 5)).toBe("Hell…");
   });
 
-  test("returns ellipsis alone when maxLen is 1", () => {
+  it("returns ellipsis alone when maxLen is 1", () => {
     expect(truncate("Hi", 1)).toBe("…");
   });
 
-  test("handles empty string", () => {
+  it("returns empty string when maxLen is 0", () => {
+    expect(truncate("Hi", 0)).toBe("");
+  });
+
+  it("handles empty string", () => {
     expect(truncate("", 5)).toBe("");
   });
 
-  test("does not append ellipsis for exact fit", () => {
+  it("does not append ellipsis for exact fit", () => {
     expect(truncate("Hello", 5)).toBe("Hello");
   });
 });

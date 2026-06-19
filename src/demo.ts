@@ -14,6 +14,18 @@ function main() {
       titles: [{ text: "Demo", align: "left" }],
     }),
   );
+  root.addChild(
+    new BorderBox(
+      new Text("The text will wrap and the border box will grow in height to fit it.", 0, 0),
+      {
+        borderStyle: "heavy",
+        titles: [{ text: "Wrap supreme", align: "left" }],
+        padding: {
+          left: 2,
+        },
+      },
+    ),
+  );
 
   // Blank line between boxes
   root.addChild(new Text("", 0, 0));
@@ -22,6 +34,7 @@ function main() {
   root.addChild(
     new BorderBox(new Text("Rounded corners", 1, 0), {
       borderStyle: "singleRounded",
+      borderColor: chalk.blue,
       titles: [
         { text: chalk.yellow("Left yellow"), align: "left" },
         { text: "Right", align: "right" },

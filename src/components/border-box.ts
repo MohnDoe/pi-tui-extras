@@ -37,6 +37,8 @@ const BORDER_CHARS: Record<
   heavy: { tl: "┏", tr: "┓", bl: "┗", br: "┛", h: "━", v: "┃" },
 };
 
+export const TITLE_MIN_WIDTH = 1;
+
 function validateTitles(titles: TitleDef[]): void {
   if (titles.length > 2) throw new Error("BorderBox: max 2 titles");
   if (titles.length === 2) {
@@ -82,7 +84,7 @@ function buildBorderLine(opts: BorderLineOptions): string {
     // If decor overflows, truncate title and retry
     let finalDecor: string;
     if (fill === 0) {
-      const maxText = Math.max(1, innerWidth - 4);
+      const maxText = Math.max(TITLE_MIN_WIDTH, innerWidth - 4);
       const truncated = truncate(d.text, maxText);
       // If still overflows, drop spaces around title
       if (innerWidth < 4) {
