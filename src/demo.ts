@@ -1,5 +1,6 @@
 import { Container, ProcessTerminal, Text, TUI } from "@mariozechner/pi-tui";
 import { BorderBox } from "./components/border-box";
+import chalk from "chalk";
 
 function main() {
   const terminal = new ProcessTerminal();
@@ -22,10 +23,17 @@ function main() {
     new BorderBox(new Text("Rounded corners", 1, 0), {
       borderStyle: "singleRounded",
       titles: [
-        { text: "Left", align: "left" },
+        { text: chalk.yellow("Left yellow"), align: "left" },
         { text: "Right", align: "right" },
       ],
       footers: [{ text: "Footer", align: "center" }],
+    }),
+  );
+
+  root.addChild(
+    new BorderBox(new Text("No title, no footer", 1, 0), {
+      borderStyle: "double",
+      borderColor: chalk.red,
     }),
   );
 

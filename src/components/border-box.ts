@@ -125,7 +125,10 @@ function buildBorderLine(opts: BorderLineOptions): string {
   const leftDef = defs[0]!;
   const rightDef = defs[1]!;
   const leftText = truncate(leftDef.text, Math.max(1, innerWidth - 6));
-  const rightText = truncate(rightDef.text, Math.max(1, innerWidth - visibleWidth(`─ ${leftText} ─`) - 4));
+  const rightText = truncate(
+    rightDef.text,
+    Math.max(1, innerWidth - visibleWidth(`─ ${leftText} ─`) - 4),
+  );
   const leftDecor = `${h} ${leftText} ${h}`;
   const rightDecor = `${h} ${rightText} ${h}`;
   const midFill = Math.max(0, innerWidth - visibleWidth(leftDecor) - visibleWidth(rightDecor));
@@ -150,7 +153,14 @@ export class BorderBox implements Component {
     this.borderColor = options.borderColor;
     this.titles = options.titles;
     this.footers = options.footers;
-    this.padding = options.padding ?? {};
+
+    const rawPad = options.padding ?? {};
+    this.padding = {
+      left: Math.max(0, rawPad.left ?? 0),
+      right: Math.max(0, rawPad.right ?? 0),
+      top: Math.max(0, rawPad.top ?? 0),
+      bottom: Math.max(0, rawPad.bottom ?? 0),
+    };
   }
 
   render(width: number): string[] {
@@ -183,23 +193,49 @@ export class BorderBox implements Component {
 
     // PaddingY top
     for (let i = 0; i < padT; i++) {
-      lines.push(padLine(color ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v) : bc.v + " ".repeat(innerWidth) + bc.v, width));
+      lines.push(
+        padLine(
+          color
+            ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v)
+            : bc.v + " ".repeat(innerWidth) + bc.v,
+          width,
+        ),
+      );
     }
 
     // Content
     if (childLines.length === 0) {
-      lines.push(padLine(color ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v) : bc.v + " ".repeat(innerWidth) + bc.v, width));
+      lines.push(
+        padLine(
+          color
+            ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v)
+            : bc.v + " ".repeat(innerWidth) + bc.v,
+          width,
+        ),
+      );
     } else {
       for (const line of childLines) {
-        const childPad = Math.max(0, innerWidth - padL - padR - childInnerWidth + (childInnerWidth - visibleWidth(line)));
+        const childPad = Math.max(
+          0,
+          innerWidth - padL - padR - childInnerWidth + (childInnerWidth - visibleWidth(line)),
+        );
         const padded = " ".repeat(padL) + line + " ".repeat(childPad + padR);
-        lines.push(padLine(color ? color(bc.v) + padded + color(bc.v) : bc.v + padded + bc.v, width));
+        lines.push(
+          padLine(color ? color(bc.v) + padded + color(bc.v) : bc.v + padded + bc.v, width),
+        );
       }
     }
 
     // PaddingY bottom
     for (let i = 0; i < padB; i++) {
-      lines.push(padLine(color ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v) : bc.v + " ".repeat(innerWidth) + bc.v, width));
+      lines.push(
+        padLine(
+          color
+            ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v)
+            : bc.v + " ".repeat(innerWidth) + bc.v,
+          width,
+        ),
+      );
     }
 
     // Bottom border

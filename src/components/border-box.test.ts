@@ -208,4 +208,20 @@ describe("BorderBox", () => {
 
     expect(lines).toEqual(["┌─┐", "│ │", "└─┘"]);
   });
+
+  test("clamps negative padding to 0", () => {
+    const child = new Text("Hi", 0, 0);
+    const box = new BorderBox(child, {
+      padding: { left: -5, right: -5, top: -1, bottom: -1 },
+    });
+
+    // All clamped to 0 → same as no padding
+    const lines = box.render(4);
+
+    expect(lines).toEqual([
+      "┌──┐",
+      "│Hi│",
+      "└──┘",
+    ]);
+  });
 });
