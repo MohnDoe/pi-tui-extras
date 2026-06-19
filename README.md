@@ -57,7 +57,8 @@ new BorderBox(new Text("Hello", 1, 0), {
 new BorderBox(new Text("Hello from BorderBox!", 1, 0), {
   titles: [{ text: "Demo", align: "left" }],
 });
-// result
+```
+```bash
 ┌─ Demo ─────────────────────────────────────────────────┐
 │ Hello from BorderBox!                                  │
 └────────────────────────────────────────────────────────┘
@@ -77,7 +78,8 @@ new BorderBox(new Text("Rounded corners", 0, 0), {
     left: 1,
   },
 }),
-// result
+```
+```bash
 ╭─ Left title ────────────────────────────────── Right ─╮
 │ Rounded corners                                       │
 ╰───────────────── Footer but centered ─────────────────╯
@@ -94,7 +96,8 @@ new BorderBox(new Text("No title, no footer but paddings!", 0, 0), {
     bottom: 1,
   },
 }),
-// result
+```
+```bash
 ╔════════════════════════════════════════════════════════╗
 ║                                                        ║
 ║                                                        ║
