@@ -1,17 +1,26 @@
 {
   "name": "@mohndoe/pi-tui-extras",
   "version": "0.1.1",
+  "description": "Pi.dev component library.",
+  "keywords": [],
+  "homepage": "https://github.com/MohnDoe/pi-tui-extras#readme",
+  "license": "MIT",
+  "author": "Kevin P. <@mohndoe>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MohnDoe/pi-tui-extras.git"
+  },
   "type": "module",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "scripts": {
     "build": "bunx tsc -p tsconfig.json",
     "build:watch": "bunx tsc -p tsconfig.json --watch",
+    "typecheck": "bunx tsc --noEmit",
     "demo": "bun run src/demo.ts",
     "test": "bun test"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "vitest": "^4.1.9"
+    "@types/bun": "latest"
   },
   "peerDependencies": {
     "@mariozechner/pi-tui": "^0.73.1",

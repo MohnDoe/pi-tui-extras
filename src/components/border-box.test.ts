@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { Text } from "@mariozechner/pi-tui";
+import { describe, expect, it } from "bun:test";
 import { BorderBox } from "./border-box";
 
 describe("BorderBox", () => {

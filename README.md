@@ -9,10 +9,6 @@
 
 Out of the box and useful components for pi.dev extensions development.
 
-## Why
-
-pi-tui gives you the core engine and basic widgets. `pi-tui-extras` fills the gap with polished, reusable components that follow the same patterns — without bloating the core. Install what you need, skip what you don't.
-
 ## Install
 
 ```bash
@@ -26,7 +22,7 @@ yarn add @mohndoe/pi-tui-extras
 
 ### BorderBox
 
-A bordered container with optional titles and footers.
+A bordered container with optional titles and footers, paddings, colors and border style.
 
 ```ts
 import { BorderBox } from "@mohndoe/pi-tui-extras";
@@ -58,6 +54,7 @@ new BorderBox(new Text("Hello from BorderBox!", 1, 0), {
   titles: [{ text: "Demo", align: "left" }],
 });
 ```
+
 ```bash
 ┌─ Demo ─────────────────────────────────────────────────┐
 │ Hello from BorderBox!                                  │
@@ -79,6 +76,7 @@ new BorderBox(new Text("Rounded corners", 0, 0), {
   },
 }),
 ```
+
 ```bash
 ╭─ Left title ────────────────────────────────── Right ─╮
 │ Rounded corners                                       │
@@ -97,6 +95,7 @@ new BorderBox(new Text("No title, no footer but paddings!", 0, 0), {
   },
 }),
 ```
+
 ```bash
 ╔════════════════════════════════════════════════════════╗
 ║                                                        ║
