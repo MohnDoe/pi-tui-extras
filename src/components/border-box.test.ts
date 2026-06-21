@@ -77,7 +77,6 @@ describe("BorderBox", () => {
 
     const lines = box.render(20);
 
-    // leftDecor ends with ─, midFill=1 ─, rightDecor starts with ─ → 3 dashes visible
     expect(lines[0]).toBe("┌─ Left ─── Right ─┐");
   });
 
@@ -109,8 +108,18 @@ describe("BorderBox", () => {
       () =>
         new BorderBox(child, {
           titles: [
-            { text: "a", align: "right" },
+            { text: "a", align: "left" },
             { text: "b", align: "left" },
+          ],
+        }),
+    ).toThrow("BorderBox: two titles must be left + right");
+
+    expect(
+      () =>
+        new BorderBox(child, {
+          titles: [
+            { text: "a", align: "right" },
+            { text: "b", align: "right" },
           ],
         }),
     ).toThrow("BorderBox: two titles must be left + right");
