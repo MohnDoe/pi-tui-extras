@@ -1,5 +1,5 @@
-import { Text } from "@mariozechner/pi-tui";
-import { describe, expect, it } from "bun:test";
+import { Text, type Component } from "@mariozechner/pi-tui";
+import { describe, expect, it, mock } from "bun:test";
 import { BorderBox } from "./border-box";
 
 describe("BorderBox", () => {
@@ -317,33 +317,64 @@ describe("BorderBox", () => {
     });
   });
 
-  it("caches render output for same width", () => {
-    const child = new Text("Hi", 0, 0);
-    const box = new BorderBox(child);
+  describe("Component behaviors", () => {
+    it("caches render output for same width", () => {
+      const child = new Text("Hi", 0, 0);
+      const box = new BorderBox(child);
 
-    const first = box.render(10);
-    const second = box.render(10);
+      const first = box.render(10);
+      const second = box.render(10);
 
-    expect(first).toBe(second); // same array reference = cached
+      expect(first).toBe(second); // same array reference = cached
+    });
+
+    it("invalidates cache on invalidate()", () => {
+      const child = new Text("Hi", 0, 0);
+      const box = new BorderBox(child);
+
+      const first = box.render(10);
+      box.invalidate();
+      const second = box.render(10);
+
+      expect(first).not.toBe(second);
+    });
+
+    it("forwards input to child and invalidates", () => {
+      const childComponent: Component = {
+        render: mock((_w) => [""]),
+        invalidate: mock(() => {}),
+        handleInput: mock(() => {}),
+      };
+
+      const borderBox = new BorderBox(childComponent);
+
+      borderBox.handleInput("a"); // simulate input
+
+      expect(childComponent.handleInput).toHaveBeenCalledWith("a");
+
+      borderBox.handleInput("b");
+      borderBox.handleInput("c");
+      expect(childComponent.invalidate).toHaveBeenCalledTimes(3);
+    });
+
+    it("still invalidates when child has no handler", () => {
+      const borderBox = new BorderBox(new Text());
+      borderBox.invalidate = mock(() => {});
+
+      borderBox.handleInput("q"); // simulate input
+
+      expect(borderBox.invalidate).toHaveBeenCalledTimes(1);
+    });
   });
 
-  it("invalidates cache on invalidate()", () => {
-    const child = new Text("Hi", 0, 0);
-    const box = new BorderBox(child);
+  describe("edge cases", () => {
+    it("handles empty child", () => {
+      const child = new Text("", 0, 0);
+      const box = new BorderBox(child);
 
-    const first = box.render(10);
-    box.invalidate();
-    const second = box.render(10);
+      const lines = box.render(3);
 
-    expect(first).not.toBe(second);
-  });
-
-  it("handles empty child", () => {
-    const child = new Text("", 0, 0);
-    const box = new BorderBox(child);
-
-    const lines = box.render(3);
-
-    expect(lines).toEqual(["┌─┐", "│ │", "└─┘"]);
+      expect(lines).toEqual(["┌─┐", "│ │", "└─┘"]);
+    });
   });
 });

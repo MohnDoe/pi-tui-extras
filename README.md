@@ -2,7 +2,7 @@
   <strong>A pi.dev component and utility library.</strong>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/coverage-96%25-green" alt="Coverage">
+  <img src="https://img.shields.io/badge/coverage-100%25-green" alt="Coverage">
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat&colorA=222222&logo=typescript&logoColor=white" alt="TypeScript"></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/runtime-Bun-f472b6?style=flat&colorA=222222" alt="Bun"></a>
   <a href="https://github.com/mohndoe/pi-tui-extras/blob/main/LICENSE"><img src="https://img.shields.io/github/license/mohndoe/pi-tui-extras?style=flat&colorA=222222&colorB=58A6FF" alt="License"></a>
