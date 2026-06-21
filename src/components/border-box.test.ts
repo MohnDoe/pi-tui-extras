@@ -121,7 +121,7 @@ describe("BorderBox", () => {
               { text: "c", align: "center" },
             ],
           }),
-      ).toThrow("BorderBox: max 2 titles");
+      ).toThrow("BorderBox: max 2 text definitions per line");
 
       expect(
         () =>
@@ -131,7 +131,7 @@ describe("BorderBox", () => {
               { text: "b", align: "center" },
             ],
           }),
-      ).toThrow("BorderBox: two titles must be left + right");
+      ).toThrow("BorderBox: two text definitions on the same line must be left + right");
 
       expect(
         () =>
@@ -141,7 +141,7 @@ describe("BorderBox", () => {
               { text: "b", align: "left" },
             ],
           }),
-      ).toThrow("BorderBox: two titles must be left + right");
+      ).toThrow("BorderBox: two text definitions on the same line must be left + right");
 
       expect(
         () =>
@@ -151,7 +151,7 @@ describe("BorderBox", () => {
               { text: "b", align: "right" },
             ],
           }),
-      ).toThrow("BorderBox: two titles must be left + right");
+      ).toThrow("BorderBox: two text definitions on the same line must be left + right");
     });
 
     it("truncates long titles to fit", () => {
@@ -175,6 +175,117 @@ describe("BorderBox", () => {
       const lines = box.render(10);
 
       expect(lines[2]).toBe("└─ Foot ─┘");
+    });
+
+    it("renders left-aligned footer", () => {
+      const child = new Text("Hello", 0, 0);
+      const box = new BorderBox(child, { footers: [{ text: "Footer", align: "left" }] });
+
+      const lines = box.render(20);
+      expect(lines[lines.length - 1]).toBe("└─ Footer ─────────┘");
+    });
+
+    it("renders right-aligned footer", () => {
+      const child = new Text("Hello", 0, 0);
+      const box = new BorderBox(child, { footers: [{ text: "Footer", align: "right" }] });
+
+      const lines = box.render(20);
+
+      expect(lines[lines.length - 1]).toBe("└───────── Footer ─┘");
+    });
+
+    it("renders centered footer", () => {
+      const child = new Text("Hello", 0, 0);
+      const box = new BorderBox(child, { footers: [{ text: "Footer", align: "center" }] });
+
+      const lines = box.render(16);
+
+      expect(lines[lines.length - 1]).toBe("└─── Footer ───┘");
+    });
+
+    it("renders left + right footer pair", () => {
+      const child = new Text("Hello", 0, 0);
+      const box = new BorderBox(child, {
+        footers: [
+          { text: "Left", align: "left" },
+          { text: "Right", align: "right" },
+        ],
+      });
+
+      const lines = box.render(20);
+
+      expect(lines[lines.length - 1]).toBe("└─ Left ─── Right ─┘");
+    });
+
+    it("renders left + right footer pair : no matter the order of the params", () => {
+      const child = new Text("Hello", 0, 0);
+      const box = new BorderBox(child, {
+        footers: [
+          { text: "Right", align: "right" },
+          { text: "Left", align: "left" },
+        ],
+      });
+
+      const lines = box.render(20);
+
+      expect(lines[lines.length - 1]).toBe("└─ Left ─── Right ─┘");
+    });
+
+    it("throws on invalid footer combos", () => {
+      const child = new Text("x", 0, 0);
+
+      expect(
+        () =>
+          new BorderBox(child, {
+            footers: [
+              { text: "a", align: "left" },
+              { text: "b", align: "right" },
+              { text: "c", align: "center" },
+            ],
+          }),
+      ).toThrow("BorderBox: max 2 text definitions per line");
+
+      expect(
+        () =>
+          new BorderBox(child, {
+            footers: [
+              { text: "a", align: "center" },
+              { text: "b", align: "center" },
+            ],
+          }),
+      ).toThrow("BorderBox: two text definitions on the same line must be left + right");
+
+      expect(
+        () =>
+          new BorderBox(child, {
+            footers: [
+              { text: "a", align: "left" },
+              { text: "b", align: "left" },
+            ],
+          }),
+      ).toThrow("BorderBox: two text definitions on the same line must be left + right");
+
+      expect(
+        () =>
+          new BorderBox(child, {
+            footers: [
+              { text: "a", align: "right" },
+              { text: "b", align: "right" },
+            ],
+          }),
+      ).toThrow("BorderBox: two text definitions on the same line must be left + right");
+    });
+
+    it("truncates long footers to fit", () => {
+      const child = new Text("X", 0, 0);
+      const box = new BorderBox(child, {
+        footers: [{ text: "VeryLongFooter", align: "left" }],
+      });
+
+      const lines = box.render(5);
+
+      // innerWidth=3, decor needs 4 chars for "─ T ─", text truncated to fit
+      expect(lines[lines.length - 1]).toBe("└─…─┘");
     });
   });
 

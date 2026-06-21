@@ -88,14 +88,15 @@ const LR_LEFT_OVERHEAD = 6;
  * @throws If more than 2 {@link MAX_TITLE_COUNT} titles, or 2 titles not left+right, or invalid align for 1 title.
  */
 function validateTitles(titles: TextDef[]): void {
-  if (titles.length > MAX_TITLE_COUNT) throw new Error(`BorderBox: max ${MAX_TITLE_COUNT} titles`);
+  if (titles.length > MAX_TITLE_COUNT)
+    throw new Error(`BorderBox: max ${MAX_TITLE_COUNT} text definitions per line`);
   if (titles.length === MAX_TITLE_COUNT) {
     if (
       titles[0]!.align === titles[1]!.align ||
       titles[0]!.align === "center" ||
       titles[1]!.align === "center"
     ) {
-      throw new Error("BorderBox: two titles must be left + right");
+      throw new Error("BorderBox: two text definitions on the same line must be left + right");
     }
   }
 }
