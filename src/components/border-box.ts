@@ -4,14 +4,20 @@ import { truncate } from "../core/truncate";
 import { padLine } from "../core/pad-line";
 import { alignInWidth, alignInWidthLR } from "../core/align";
 
+/** Supported box-drawing border styles. */
 export type BorderStyle = "single" | "singleRounded" | "double" | "heavy";
+/** Horizontal alignment for titles or footers within a border edge. */
 export type TitleAlign = "left" | "right" | "center";
 
+/** A title or footer entry positioned along a border edge. */
 export interface TitleDef {
+  /** Display text. Truncated with "…" {@link truncate} when it overflows the available width. */
   text: string;
+  /** Horizontal alignment within the border edge. */
   align: TitleAlign;
 }
 
+/** Optional inner padding around the child component. */
 export interface Padding {
   left?: number;
   right?: number;
@@ -19,14 +25,27 @@ export interface Padding {
   bottom?: number;
 }
 
+/** Options for configuring a {@link BorderBox} instance. */
 export interface BorderBoxOptions {
+  /** Border character set (default: "single"). */
   borderStyle?: BorderStyle;
+  /**
+   * Apply ANSI or custom color wrapping to every border character.
+   * Receives the raw character and returns the styled version.
+   *
+   * Example: (using chalk) `chalk.red`
+   * Example: (using pi theme) `(s) => theme.fg("muted", s)`
+   */
   borderColor?: (text: string) => string;
+  /** Titles drawn on the top border (max 2: left + right). */
   titles?: TitleDef[];
+  /** Footers drawn on the bottom border (max 2: left + right). */
   footers?: TitleDef[];
+  /** Padding between border edge and child content. */
   padding?: Padding;
 }
 
+/** Box-drawing character set for each border style. */
 const BORDER_CHARS: Record<
   BorderStyle,
   { tl: string; tr: string; bl: string; br: string; h: string; v: string }
@@ -37,38 +56,65 @@ const BORDER_CHARS: Record<
   heavy: { tl: "┏", tr: "┓", bl: "┗", br: "┛", h: "━", v: "┃" },
 };
 
+/**
+ * Minimum visible width for a truncated title/footer (avoids empty border).
+ * Smallest title/footer will render ellipsis
+ * */
 export const TITLE_MIN_WIDTH = 1;
 
+/** Maximum titles or footers allowed per border edge (left + right). */
 const MAX_TITLE_COUNT = 2;
-/** Decor "─ text ─" overhead: h + space + space + h = 4 visible chars. */
+/**
+ * Decor "─ <title/footer> ─" overhead: h + space + space + h = 4 visible chars.
+ * This accounts for the two flanking dashes and the two spaces around the text.
+ */
 const DECOR_OVERHEAD = 4;
-/** Tight decor "─…─" overhead: h + h = 2 visible chars (no spaces). */
+/**
+ * Tight decor "─<title/footer>─" overhead: h + h = 2 visible chars (no spaces).
+ * Used when the available width is too narrow for spaced decoration.
+ */
 const DECOR_TIGHT_OVERHEAD = 2;
-/** Left-text room heuristic for LR pair: accounts for both decor overheads + gap. */
+/**
+ * Left-text room heuristic for LR title pair.
+ * Accounts for left decor overhead (4) (L + border + border + space), right decor overhead (4), minus 2
+ * because the two inner dashes merge into one gap dash, giving 4 + 4 - 2 = 6.
+ */
 const LR_LEFT_OVERHEAD = 6;
 
+/**
+ * Validate title/footer constraints before constructing the component.
+ *
+ * @param titles - Array of title definitions to validate
+ * @throws If more than 2 {@link MAX_TITLE_COUNT} titles, or 2 titles not left+right, or invalid align for 1 title.
+ */
 function validateTitles(titles: TitleDef[]): void {
-  if (titles.length > MAX_TITLE_COUNT) throw new Error("BorderBox: max 2 titles");
+  if (titles.length > MAX_TITLE_COUNT) throw new Error(`BorderBox: max ${MAX_TITLE_COUNT} titles`);
   if (titles.length === MAX_TITLE_COUNT) {
-    if (titles[0]!.align !== "left" || titles[1]!.align !== "right") {
+    if (
+      titles[0]!.align === titles[1]!.align ||
+      titles[0]!.align === "center" ||
+      titles[1]!.align === "center"
+    ) {
       throw new Error("BorderBox: two titles must be left + right");
-    }
-  }
-  if (titles.length === 1) {
-    const a = titles[0]!.align;
-    if (a !== "left" && a !== "right" && a !== "center") {
-      throw new Error(`BorderBox: invalid title align "${a}"`);
     }
   }
 }
 
+/** Internal options for building a single border line (top or bottom). */
 interface BorderLineOptions {
+  /** Left corner character (e.g. "┌" for top, "└" for bottom). */
   leftCorner: string;
+  /** Right corner character (e.g. "┐" for top, "┘" for bottom). */
   rightCorner: string;
+  /** Width of the border interior (excludes 2 corner chars). */
   innerWidth: number;
+  /** Total width of the full rendered line (inner + corners + potential pad). */
   totalWidth: number;
+  /** Horizontal border character (e.g. "─"). */
   hChar: string;
+  /** Optional color function applied to every border character. */
   color?: (s: string) => string;
+  /** Title/footer definitions to embed in this border edge. */
   defs?: TitleDef[];
 }
 
@@ -78,10 +124,12 @@ function buildBorderLine(opts: BorderLineOptions): string {
   const l = color ? color(leftCorner) : leftCorner;
   const r = color ? color(rightCorner) : rightCorner;
 
+  // No titles — solid horizontal line
   if (!defs || defs.length === 0) {
     return padLine(`${l}${h.repeat(innerWidth)}${r}`, totalWidth);
   }
 
+  // Single title — space-padded decor "─ text ─", falls back to tight "─…─"
   if (defs.length === 1) {
     const d = defs[0]!;
     // First pass: try with original text
@@ -94,7 +142,7 @@ function buildBorderLine(opts: BorderLineOptions): string {
     if (fill === 0) {
       const maxText = Math.max(TITLE_MIN_WIDTH, innerWidth - DECOR_OVERHEAD);
       const truncated = truncate(d.text, maxText);
-      // If still overflows, drop spaces around title
+      // If still overflows, drop spaces around title → tight decor
       if (innerWidth < DECOR_OVERHEAD) {
         finalDecor = `${h}${truncate(d.text, Math.max(TITLE_MIN_WIDTH, innerWidth - DECOR_TIGHT_OVERHEAD))}${h}`;
       } else {
@@ -107,7 +155,7 @@ function buildBorderLine(opts: BorderLineOptions): string {
     return padLine(`${l}${positioned}${r}`, totalWidth);
   }
 
-  // length === 2: left + right
+  // Two titles: left-aligned + right-aligned pair
   const leftDef = defs[0]!;
   const rightDef = defs[1]!;
   const leftText = truncate(leftDef.text, Math.max(TITLE_MIN_WIDTH, innerWidth - LR_LEFT_OVERHEAD));
@@ -121,15 +169,35 @@ function buildBorderLine(opts: BorderLineOptions): string {
   return padLine(`${l}${positioned}${r}`, totalWidth);
 }
 
+/**
+ * Renders a child component wrapped in a configurable box-drawing border.
+ *
+ * Supports four border styles (single, singleRounded, double, heavy),
+ * optional colored borders, up to two titles/footers per edge, and
+ * configurable inner padding. Render output is cached per-width for
+ * performance and invalidated on input.
+ */
 export class BorderBox implements Component {
+  /** Cached render output, keyed by width. Cleared on invalidate(). */
   private cache: { lines: string[]; width: number } | null = null;
+  /** The wrapped child component rendered inside the border. */
   private readonly child: Component;
+  /** Selected box-drawing character set. */
   private readonly borderStyle: BorderStyle;
+  /** Optional function to wrap border characters with color/ANSI. */
   private readonly borderColor?: (text: string) => string;
+  /** Optional title entries drawn on the top border edge. */
   private readonly titles?: TitleDef[];
+  /** Optional footer entries drawn on the bottom border edge. */
   private readonly footers?: TitleDef[];
+  /** Normalised padding (clamped ≥ 0) between border and child. */
   private readonly padding: Padding;
 
+  /**
+   * @param child - Component to render inside the border.
+   * @param options - Border style, color, titles/footers, and padding.
+   * @throws If titles/footers violate constraints (>2, or 2 not left+right).
+   */
   constructor(child: Component, options: BorderBoxOptions = {}) {
     if (options.titles) validateTitles(options.titles);
     if (options.footers) validateTitles(options.footers);
@@ -140,6 +208,7 @@ export class BorderBox implements Component {
     this.titles = options.titles;
     this.footers = options.footers;
 
+    // Clamp negative padding values to 0
     const rawPad = options.padding ?? {};
     this.padding = {
       left: Math.max(0, rawPad.left ?? 0),
@@ -241,16 +310,27 @@ export class BorderBox implements Component {
     return lines;
   }
 
+  /**
+   * Forward input data to the child component.
+   * Invalidates the render cache so the next render() picks up child state changes.
+   *
+   * @param data - Input string forwarded to the child's handleInput, if defined.
+   */
   handleInput(data: string): void {
     this.child.handleInput?.(data);
     this.invalidate();
   }
 
+  /**
+   * Invalidate the render cache, forcing a full re-render on the next call.
+   * Propagates invalidation to the child component as well.
+   */
   invalidate(): void {
     this.cache = null;
     this.child.invalidate();
   }
 
+  /** Convenience getter for the current border character set. */
   private get borderChars() {
     return BORDER_CHARS[this.borderStyle];
   }
