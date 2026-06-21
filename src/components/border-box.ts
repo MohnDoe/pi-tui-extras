@@ -7,14 +7,14 @@ import { alignInWidth, alignInWidthLR } from "../core/align";
 /** Supported box-drawing border styles. */
 export type BorderStyle = "single" | "singleRounded" | "double" | "heavy";
 /** Horizontal alignment for titles or footers within a border edge. */
-export type TitleAlign = "left" | "right" | "center";
+export type TextAlign = "left" | "right" | "center";
 
 /** A title or footer entry positioned along a border edge. */
-export interface TitleDef {
+export interface TextDef {
   /** Display text. Truncated with "…" {@link truncate} when it overflows the available width. */
   text: string;
   /** Horizontal alignment within the border edge. */
-  align: TitleAlign;
+  align: TextAlign;
 }
 
 /** Optional inner padding around the child component. */
@@ -38,9 +38,9 @@ export interface BorderBoxOptions {
    */
   borderColor?: (text: string) => string;
   /** Titles drawn on the top border (max 2: left + right). */
-  titles?: TitleDef[];
+  titles?: TextDef[];
   /** Footers drawn on the bottom border (max 2: left + right). */
-  footers?: TitleDef[];
+  footers?: TextDef[];
   /** Padding between border edge and child content. */
   padding?: Padding;
 }
@@ -84,10 +84,10 @@ const LR_LEFT_OVERHEAD = 6;
 /**
  * Validate title/footer constraints before constructing the component.
  *
- * @param titles - Array of title definitions to validate
+ * @param titles - Array of text definitions to validate
  * @throws If more than 2 {@link MAX_TITLE_COUNT} titles, or 2 titles not left+right, or invalid align for 1 title.
  */
-function validateTitles(titles: TitleDef[]): void {
+function validateTitles(titles: TextDef[]): void {
   if (titles.length > MAX_TITLE_COUNT) throw new Error(`BorderBox: max ${MAX_TITLE_COUNT} titles`);
   if (titles.length === MAX_TITLE_COUNT) {
     if (
@@ -115,23 +115,23 @@ interface BorderLineOptions {
   /** Optional color function applied to every border character. */
   color?: (s: string) => string;
   /** Title/footer definitions to embed in this border edge. */
-  defs?: TitleDef[];
+  textDefs?: TextDef[];
 }
 
 function buildBorderLine(opts: BorderLineOptions): string {
-  const { leftCorner, rightCorner, innerWidth, totalWidth, hChar, color, defs } = opts;
+  const { leftCorner, rightCorner, innerWidth, totalWidth, hChar, color, textDefs } = opts;
   const h = color ? color(hChar) : hChar;
   const l = color ? color(leftCorner) : leftCorner;
   const r = color ? color(rightCorner) : rightCorner;
 
   // No titles — solid horizontal line
-  if (!defs || defs.length === 0) {
+  if (!textDefs || textDefs.length === 0) {
     return padLine(`${l}${h.repeat(innerWidth)}${r}`, totalWidth);
   }
 
   // Single title — space-padded decor "─ text ─", falls back to tight "─…─"
-  if (defs.length === 1) {
-    const d = defs[0]!;
+  if (textDefs.length === 1) {
+    const d = textDefs[0]!;
     // First pass: try with original text
     const decor = `${h} ${d.text} ${h}`;
     const decorW = visibleWidth(decor);
@@ -156,8 +156,11 @@ function buildBorderLine(opts: BorderLineOptions): string {
   }
 
   // Two titles: left-aligned + right-aligned pair
-  const leftDef = defs[0]!;
-  const rightDef = defs[1]!;
+  const firstDef = textDefs[0]!;
+  const secondDef = textDefs[1]!;
+  const leftDef = firstDef.align === "left" ? firstDef : secondDef;
+  const rightDef = firstDef.align === "right" ? firstDef : secondDef;
+
   const leftText = truncate(leftDef.text, Math.max(TITLE_MIN_WIDTH, innerWidth - LR_LEFT_OVERHEAD));
   const rightText = truncate(
     rightDef.text,
@@ -187,9 +190,9 @@ export class BorderBox implements Component {
   /** Optional function to wrap border characters with color/ANSI. */
   private readonly borderColor?: (text: string) => string;
   /** Optional title entries drawn on the top border edge. */
-  private readonly titles?: TitleDef[];
+  private readonly titles?: TextDef[];
   /** Optional footer entries drawn on the bottom border edge. */
-  private readonly footers?: TitleDef[];
+  private readonly footers?: TextDef[];
   /** Normalised padding (clamped ≥ 0) between border and child. */
   private readonly padding: Padding;
 
@@ -242,7 +245,7 @@ export class BorderBox implements Component {
         totalWidth: width,
         hChar: bc.h,
         color,
-        defs: this.titles,
+        textDefs: this.titles,
       }),
     );
 
@@ -302,7 +305,7 @@ export class BorderBox implements Component {
         totalWidth: width,
         hChar: bc.h,
         color,
-        defs: this.footers,
+        textDefs: this.footers,
       }),
     );
 

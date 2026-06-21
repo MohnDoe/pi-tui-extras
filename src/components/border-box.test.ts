@@ -95,6 +95,20 @@ describe("BorderBox", () => {
       expect(lines[0]).toBe("┌─ Left ─── Right ─┐");
     });
 
+    it("renders left + right title pair : no matter the order of the params", () => {
+      const child = new Text("Hello", 0, 0);
+      const box = new BorderBox(child, {
+        titles: [
+          { text: "Right", align: "right" },
+          { text: "Left", align: "left" },
+        ],
+      });
+
+      const lines = box.render(20);
+
+      expect(lines[0]).toBe("┌─ Left ─── Right ─┐");
+    });
+
     it("throws on invalid title combos", () => {
       const child = new Text("x", 0, 0);
 
