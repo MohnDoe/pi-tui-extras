@@ -29,13 +29,21 @@ export interface BorderBoxOptions {
   /** Border character set (default: "single"). */
   borderStyle?: BorderStyle;
   /**
-   * Apply ANSI or custom color wrapping to every border character.
+   * Apply ANSI or custom styling to every border character.
    * Receives the raw character and returns the styled version.
    *
-   * Example: (using chalk) `chalk.red`
-   * Example: (using pi theme) `(s) => theme.fg("muted", s)`
+   * @example `chalk.red`
+   * @example `(s) => theme.fg("muted", s)`
    */
-  borderColor?: (text: string) => string;
+  borderFn?: (text: string) => string;
+  /**
+   * Apply ANSI or custom background styling to the inner content area
+   * (between the border edges). Receives the full inner line (padded to
+   * width) and returns the styled version.
+   *
+   * @example `chalk.bgBlue`
+   */
+  bgFn?: (text: string) => string;
   /** Titles drawn on the top border (max 2: left + right). */
   titles?: TextDef[];
   /** Footers drawn on the bottom border (max 2: left + right). */
@@ -112,17 +120,17 @@ interface BorderLineOptions {
   totalWidth: number;
   /** Horizontal border character (e.g. "─"). */
   hChar: string;
-  /** Optional color function applied to every border character. */
-  color?: (s: string) => string;
+  /** Optional styling function applied to every border character. */
+  borderFn?: (s: string) => string;
   /** Title/footer definitions to embed in this border edge. */
   textDefs?: TextDef[];
 }
 
 function buildBorderLine(opts: BorderLineOptions): string {
-  const { leftCorner, rightCorner, innerWidth, totalWidth, hChar, color, textDefs } = opts;
-  const h = color ? color(hChar) : hChar;
-  const l = color ? color(leftCorner) : leftCorner;
-  const r = color ? color(rightCorner) : rightCorner;
+  const { leftCorner, rightCorner, innerWidth, totalWidth, hChar, borderFn, textDefs } = opts;
+  const h = borderFn ? borderFn(hChar) : hChar;
+  const l = borderFn ? borderFn(leftCorner) : leftCorner;
+  const r = borderFn ? borderFn(rightCorner) : rightCorner;
 
   // No titles — solid horizontal line
   if (!textDefs || textDefs.length === 0) {
@@ -176,10 +184,11 @@ function buildBorderLine(opts: BorderLineOptions): string {
  * Renders children wrapped in a configurable box-drawing border.
  *
  * Supports four border styles (single, singleRounded, double, heavy),
- * optional colored borders, up to two titles/footers per edge, and
- * configurable inner padding. Extends {@link Box} so `addChild`,
- * `removeChild`, and `clear` work as expected. Render output is cached
- * per-width for performance and invalidated on input.
+ * optional borderFn for border styling, optional bgFn for inner content
+ * background, up to two titles/footers per edge, and configurable inner
+ * padding. Extends {@link Box} so `addChild`, `removeChild`, and `clear`
+ * work as expected. Render output is cached per-width for performance and
+ * invalidated on input.
  *
  * @example
  * ```ts
@@ -193,8 +202,10 @@ export class BorderBox extends Box {
   private borderCache: { lines: string[]; width: number } | null = null;
   /** Selected box-drawing character set. */
   private readonly borderStyle: BorderStyle;
-  /** Optional function to wrap border characters with color/ANSI. */
-  private readonly borderColor?: (text: string) => string;
+  /** Optional styling function for border characters. */
+  private readonly borderFn?: (text: string) => string;
+  /** Optional background function for the inner content area. */
+  private readonly innerBg?: (text: string) => string;
   /** Optional title entries drawn on the top border edge. */
   private readonly titles?: TextDef[];
   /** Optional footer entries drawn on the bottom border edge. */
@@ -203,18 +214,20 @@ export class BorderBox extends Box {
   private readonly padding: Padding;
 
   /**
-   * @param options - Border style, color, titles/footers, and padding.
+   * @param options - Border style, border/background styling, titles/footers, and padding.
    * @throws If titles/footers violate constraints (>2, or 2 not left+right).
    */
   constructor(options: BorderBoxOptions = {}) {
     // Box padding is unused — BorderBox applies its own via Padding.
-    super(0, 0);
+    // Pass bgFn to Box for conceptual correctness (Box stores it privately).
+    super(0, 0, options.bgFn);
 
     if (options.titles) validateTitles(options.titles);
     if (options.footers) validateTitles(options.footers);
 
     this.borderStyle = options.borderStyle ?? "single";
-    this.borderColor = options.borderColor;
+    this.borderFn = options.borderFn;
+    this.innerBg = options.bgFn;
     this.titles = options.titles;
     this.footers = options.footers;
 
@@ -238,7 +251,11 @@ export class BorderBox extends Box {
     const padT = this.padding.top ?? 0;
     const padB = this.padding.bottom ?? 0;
     const childInnerWidth = Math.max(1, innerWidth - padL - padR);
-    const color = this.borderColor;
+    const border = this.borderFn;
+    const bg = this.innerBg;
+
+    // Convenience: apply background to an inner-width string
+    const applyBg = (s: string): string => (bg ? bg(s) : s);
 
     // Render all children stacked vertically inside the border
     const childLines: string[] = [];
@@ -246,7 +263,7 @@ export class BorderBox extends Box {
       const lines = child.render(childInnerWidth);
       for (const line of lines) {
         const rem = Math.max(0, childInnerWidth - visibleWidth(line));
-        childLines.push(" ".repeat(padL) + line + " ".repeat(rem + padR));
+        childLines.push(applyBg(" ".repeat(padL) + line + " ".repeat(rem + padR)));
       }
     }
 
@@ -260,18 +277,19 @@ export class BorderBox extends Box {
         innerWidth,
         totalWidth: width,
         hChar: bc.h,
-        color,
+        borderFn: border,
         textDefs: this.titles,
       }),
     );
 
     // PaddingY top
     for (let i = 0; i < padT; i++) {
+      const inner = applyBg(" ".repeat(innerWidth));
       lines.push(
         padLine(
-          color
-            ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v)
-            : bc.v + " ".repeat(innerWidth) + bc.v,
+          border
+            ? border(bc.v) + inner + border(bc.v)
+            : bc.v + inner + bc.v,
           width,
         ),
       );
@@ -279,29 +297,36 @@ export class BorderBox extends Box {
 
     // Content — empty shell when no children or all children return empty
     if (childLines.length === 0) {
+      const inner = applyBg(" ".repeat(innerWidth));
       lines.push(
         padLine(
-          color
-            ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v)
-            : bc.v + " ".repeat(innerWidth) + bc.v,
+          border
+            ? border(bc.v) + inner + border(bc.v)
+            : bc.v + inner + bc.v,
           width,
         ),
       );
     } else {
       for (const line of childLines) {
         lines.push(
-          padLine(color ? color(bc.v) + line + color(bc.v) : bc.v + line + bc.v, width),
+          padLine(
+            border
+              ? border(bc.v) + line + border(bc.v)
+              : bc.v + line + bc.v,
+            width,
+          ),
         );
       }
     }
 
     // PaddingY bottom
     for (let i = 0; i < padB; i++) {
+      const inner = applyBg(" ".repeat(innerWidth));
       lines.push(
         padLine(
-          color
-            ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v)
-            : bc.v + " ".repeat(innerWidth) + bc.v,
+          border
+            ? border(bc.v) + inner + border(bc.v)
+            : bc.v + inner + bc.v,
           width,
         ),
       );
@@ -315,7 +340,7 @@ export class BorderBox extends Box {
         innerWidth,
         totalWidth: width,
         hChar: bc.h,
-        color,
+        borderFn: border,
         textDefs: this.footers,
       }),
     );

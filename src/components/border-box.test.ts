@@ -92,9 +92,9 @@ describe("BorderBox", () => {
       expect(lines).toEqual(["┏━┓", "┃X┃", "┗━┛"]);
     });
 
-    it("colors border lines when borderColor is set", () => {
+    it("styles border lines when borderFn is set", () => {
       const color = (s: string) => `<${s}>`;
-      const box = new BorderBox({ borderColor: color });
+      const box = new BorderBox({ borderFn: color });
       box.addChild(new Text("X", 0, 0));
 
       const lines = box.render(3);
@@ -334,6 +334,54 @@ describe("BorderBox", () => {
 
       // innerWidth=3, decor needs 4 chars for "─ T ─", text truncated to fit
       expect(lines[lines.length - 1]).toBe("└─…─┘");
+    });
+  });
+
+  describe("styling options", () => {
+    it("applies bgFn background to inner content area", () => {
+      // ANSI-reset wrapper simulates zero-width styling
+      const bg = (s: string) => `\x1b[44m${s}\x1b[49m`;
+      const box = new BorderBox({ bgFn: bg });
+      box.addChild(new Text("X", 0, 0));
+
+      const lines = box.render(3);
+
+      // Inner content "X" gets wrapped: "\x1b[44mX\x1b[49m"
+      expect(lines[1]).toBe("│\x1b[44mX\x1b[49m│");
+    });
+
+    it("bgFn applies to empty inner area (no children)", () => {
+      const bg = (s: string) => `[${s}]`;
+      const box = new BorderBox({ bgFn: bg });
+
+      const lines = box.render(3);
+
+      // innerWidth=1, " " → "[ ]"
+      expect(lines[1]).toBe("│[ ]│");
+    });
+
+    it("bgFn applies to padding lines", () => {
+      const bg = (s: string) => `<${s}>`;
+      const box = new BorderBox({ bgFn: bg, padding: { top: 1 } });
+      box.addChild(new Text("X", 0, 0));
+
+      const lines = box.render(3);
+
+      // Top padding line: innerWidth=1, " " → "< >"
+      expect(lines[1]).toBe("│< >│");
+    });
+
+    it("both borderFn and bgFn can be set together", () => {
+      // Zero-width ANSI wrappers simulate real chalk usage
+      const border = (s: string) => `\x1b[31m${s}\x1b[39m`;
+      const bg = (s: string) => `\x1b[44m${s}\x1b[49m`;
+      const box = new BorderBox({ borderFn: border, bgFn: bg });
+      box.addChild(new Text("X", 0, 0));
+
+      const lines = box.render(3);
+
+      // │ (red) + X (blue bg) + │ (red)
+      expect(lines[1]).toBe("\x1b[31m│\x1b[39m\x1b[44mX\x1b[49m\x1b[31m│\x1b[39m");
     });
   });
 

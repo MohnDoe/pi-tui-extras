@@ -31,7 +31,7 @@ function main() {
   // Rounded border with left+right titles
   const box3 = new BorderBox({
     borderStyle: "singleRounded",
-    borderColor: chalk.blue,
+    borderFn: chalk.blue,
     titles: [
       { text: chalk.yellow("Left yellow"), align: "left" },
       { text: "Right", align: "right" },
@@ -43,7 +43,7 @@ function main() {
 
   const box4 = new BorderBox({
     borderStyle: "double",
-    borderColor: chalk.red,
+    borderFn: chalk.red,
     padding: {
       top: 0,
       bottom: 3,
