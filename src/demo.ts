@@ -1,4 +1,4 @@
-import { Container, ProcessTerminal, Text, TUI } from "@mariozechner/pi-tui";
+import { Container, ProcessTerminal, Spacer, Text, TUI } from "@mariozechner/pi-tui";
 import { BorderBox } from "./components/border-box";
 import chalk from "chalk";
 
@@ -55,11 +55,15 @@ function main() {
   root.addChild(box4);
 
   const box5 = new BorderBox({
-    borderStyle: "singleRounded",
-    innerBgFn: chalk.white,
-    titles: [{ text: "chalk.white innerBg", align: "left" }],
+    borderStyle: "heavy",
+    borderFn: chalk.red,
+    innerFn: chalk.bgWhite,
+    outerFn: chalk.bgBlackBright,
+    titles: [{ text: "Combining backgrounds", align: "left" }],
   });
-  box5.addChild(new Text("Inner area background via innerBgFn", 1, 1));
+  box5.addChild(new Text(chalk.black("Inner area styled via innerFn"), 1, 0));
+  box5.addChild(new Text(chalk.black("Full box styled via outerFn"), 1, 0));
+  box5.addChild(new Spacer(1));
   root.addChild(box5);
 
   tui.addChild(root);

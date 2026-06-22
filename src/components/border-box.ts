@@ -37,21 +37,22 @@ export interface BorderBoxOptions {
    */
   borderFn?: (text: string) => string;
   /**
-   * Apply ANSI or custom background styling to every full line of output
-   * (including border characters). Applied last — wraps each complete line
-   * at full width after all decorations are assembled.
+   * Style every full line of output (including border characters).
+   * Applied last — wraps each complete line after all decorations
+   * are assembled.
    *
    * @example `chalk.bgBlue`
+   * @example `(s) => theme.bg("text", s)`
    */
-  bgFn?: (text: string) => string;
+  outerFn?: (text: string) => string;
   /**
-   * Apply ANSI or custom background styling to the content area inside
-   * the border (between the vertical edges). Applied before border
-   * characters are added.
+   * Style the content area inside the border (between the vertical
+   * edges). Applied before border characters are added.
    *
-   * @example `chalk.bgBlue`
+   * @example `chalk.bgWhite`
+   * @example `(s) => theme.bg("selectedBg", s)`
    */
-  innerBgFn?: (text: string) => string;
+  innerFn?: (text: string) => string;
   /** Titles drawn on the top border (max 2: left + right). */
   titles?: TextDef[];
   /** Footers drawn on the bottom border (max 2: left + right). */
@@ -192,8 +193,8 @@ function buildBorderLine(opts: BorderLineOptions): string {
  * Renders children wrapped in a configurable box-drawing border.
  *
  * Supports four border styles (single, singleRounded, double, heavy),
- * optional borderFn for border styling, optional bgFn for full-line
- * background, optional innerBgFn for content-area background, up to two
+ * optional borderFn for border styling, optional outerFn for full-line
+ * styling, optional innerFn for content-area styling, up to two
  * titles/footers per edge, and configurable inner padding. Extends
  * {@link Box} so `addChild`, `removeChild`, and `clear` work as expected.
  * Render output is cached per-width for performance and invalidated on
@@ -213,10 +214,10 @@ export class BorderBox extends Box {
   private readonly borderStyle: BorderStyle;
   /** Optional styling function for border characters. */
   private readonly borderFn?: (text: string) => string;
-  /** Optional background function for complete lines. */
-  private readonly outerBgFn?: (text: string) => string;
-  /** Optional background function for inner content area. */
-  private readonly innerBgFn?: (text: string) => string;
+  /** Optional function wrapping every complete output line. */
+  private readonly outerFn?: (text: string) => string;
+  /** Optional function wrapping the content area (between vertical bars). */
+  private readonly innerFn?: (text: string) => string;
   /** Optional title entries drawn on the top border edge. */
   private readonly titles?: TextDef[];
   /** Optional footer entries drawn on the bottom border edge. */
@@ -237,8 +238,8 @@ export class BorderBox extends Box {
 
     this.borderStyle = options.borderStyle ?? "single";
     this.borderFn = options.borderFn;
-    this.outerBgFn = options.bgFn;
-    this.innerBgFn = options.innerBgFn;
+    this.outerFn = options.outerFn;
+    this.innerFn = options.innerFn;
     this.titles = options.titles;
     this.footers = options.footers;
 
@@ -263,8 +264,8 @@ export class BorderBox extends Box {
     const padB = this.padding.bottom ?? 0;
     const childInnerWidth = Math.max(1, innerWidth - padL - padR);
     const border = this.borderFn;
-    const bg = this.outerBgFn;
-    const innerBg = this.innerBgFn;
+    const bg = this.outerFn;
+    const innerBg = this.innerFn;
 
     // Convenience: apply inner background to an inner-width string
     const applyInnerBg = (s: string): string => (innerBg ? innerBg(s) : s);
