@@ -1,5 +1,4 @@
-import type { Component } from "@mariozechner/pi-tui";
-import { visibleWidth } from "@mariozechner/pi-tui";
+import { Box, type Component, visibleWidth } from "@mariozechner/pi-tui";
 import { truncate } from "../core/truncate";
 import { padLine } from "../core/pad-line";
 import { alignInWidth, alignInWidthLR } from "../core/align";
@@ -17,7 +16,7 @@ export interface TextDef {
   align: TextAlign;
 }
 
-/** Optional inner padding around the child component. */
+/** Optional inner padding around children. */
 export interface Padding {
   left?: number;
   right?: number;
@@ -30,13 +29,30 @@ export interface BorderBoxOptions {
   /** Border character set (default: "single"). */
   borderStyle?: BorderStyle;
   /**
-   * Apply ANSI or custom color wrapping to every border character.
+   * Apply ANSI or custom styling to every border character.
    * Receives the raw character and returns the styled version.
    *
-   * Example: (using chalk) `chalk.red`
-   * Example: (using pi theme) `(s) => theme.fg("muted", s)`
+   * @example `chalk.red`
+   * @example `(s) => theme.fg("muted", s)`
    */
-  borderColor?: (text: string) => string;
+  borderFn?: (text: string) => string;
+  /**
+   * Style every full line of output (including border characters).
+   * Applied last — wraps each complete line after all decorations
+   * are assembled.
+   *
+   * @example `chalk.bgBlue`
+   * @example `(s) => theme.bg("text", s)`
+   */
+  outerFn?: (text: string) => string;
+  /**
+   * Style the content area inside the border (between the vertical
+   * edges). Applied before border characters are added.
+   *
+   * @example `chalk.bgWhite`
+   * @example `(s) => theme.bg("selectedBg", s)`
+   */
+  innerFn?: (text: string) => string;
   /** Titles drawn on the top border (max 2: left + right). */
   titles?: TextDef[];
   /** Footers drawn on the bottom border (max 2: left + right). */
@@ -113,17 +129,17 @@ interface BorderLineOptions {
   totalWidth: number;
   /** Horizontal border character (e.g. "─"). */
   hChar: string;
-  /** Optional color function applied to every border character. */
-  color?: (s: string) => string;
+  /** Optional styling function applied to every border character. */
+  borderFn?: (s: string) => string;
   /** Title/footer definitions to embed in this border edge. */
   textDefs?: TextDef[];
 }
 
 function buildBorderLine(opts: BorderLineOptions): string {
-  const { leftCorner, rightCorner, innerWidth, totalWidth, hChar, color, textDefs } = opts;
-  const h = color ? color(hChar) : hChar;
-  const l = color ? color(leftCorner) : leftCorner;
-  const r = color ? color(rightCorner) : rightCorner;
+  const { leftCorner, rightCorner, innerWidth, totalWidth, hChar, borderFn, textDefs } = opts;
+  const h = borderFn ? borderFn(hChar) : hChar;
+  const l = borderFn ? borderFn(leftCorner) : leftCorner;
+  const r = borderFn ? borderFn(rightCorner) : rightCorner;
 
   // No titles — solid horizontal line
   if (!textDefs || textDefs.length === 0) {
@@ -174,41 +190,56 @@ function buildBorderLine(opts: BorderLineOptions): string {
 }
 
 /**
- * Renders a child component wrapped in a configurable box-drawing border.
+ * Renders children wrapped in a configurable box-drawing border.
  *
  * Supports four border styles (single, singleRounded, double, heavy),
- * optional colored borders, up to two titles/footers per edge, and
- * configurable inner padding. Render output is cached per-width for
- * performance and invalidated on input.
+ * optional borderFn for border styling, optional outerFn for full-line
+ * styling, optional innerFn for content-area styling, up to two
+ * titles/footers per edge, and configurable inner padding. Extends
+ * {@link Box} so `addChild`, `removeChild`, and `clear` work as expected.
+ * Render output is cached per-width for performance and invalidated on
+ * input.
+ *
+ * @example
+ * ```ts
+ * const box = new BorderBox({ borderStyle: "singleRounded", titles: [{ text: "Info", align: "left" }] });
+ * box.addChild(new Text("Hello", 0, 0));
+ * const lines = box.render(20);
+ * ```
  */
-export class BorderBox implements Component {
+export class BorderBox extends Box {
   /** Cached render output, keyed by width. Cleared on invalidate(). */
-  private cache: { lines: string[]; width: number } | null = null;
-  /** The wrapped child component rendered inside the border. */
-  private readonly child: Component;
+  private borderCache: { lines: string[]; width: number } | null = null;
   /** Selected box-drawing character set. */
   private readonly borderStyle: BorderStyle;
-  /** Optional function to wrap border characters with color/ANSI. */
-  private readonly borderColor?: (text: string) => string;
+  /** Optional styling function for border characters. */
+  private readonly borderFn?: (text: string) => string;
+  /** Optional function wrapping every complete output line. */
+  private readonly outerFn?: (text: string) => string;
+  /** Optional function wrapping the content area (between vertical bars). */
+  private readonly innerFn?: (text: string) => string;
   /** Optional title entries drawn on the top border edge. */
   private readonly titles?: TextDef[];
   /** Optional footer entries drawn on the bottom border edge. */
   private readonly footers?: TextDef[];
-  /** Normalised padding (clamped ≥ 0) between border and child. */
+  /** Normalised padding (clamped ≥ 0) between border and children. */
   private readonly padding: Padding;
 
   /**
-   * @param child - Component to render inside the border.
-   * @param options - Border style, color, titles/footers, and padding.
+   * @param options - Border style, border/background styling, titles/footers, and padding.
    * @throws If titles/footers violate constraints (>2, or 2 not left+right).
    */
-  constructor(child: Component, options: BorderBoxOptions = {}) {
+  constructor(options: BorderBoxOptions = {}) {
+    // Box padding is unused — BorderBox applies its own via Padding.
+    super(0, 0);
+
     if (options.titles) validateTitles(options.titles);
     if (options.footers) validateTitles(options.footers);
 
-    this.child = child;
     this.borderStyle = options.borderStyle ?? "single";
-    this.borderColor = options.borderColor;
+    this.borderFn = options.borderFn;
+    this.outerFn = options.outerFn;
+    this.innerFn = options.innerFn;
     this.titles = options.titles;
     this.footers = options.footers;
 
@@ -222,8 +253,8 @@ export class BorderBox implements Component {
     };
   }
 
-  render(width: number): string[] {
-    if (this.cache && this.cache.width === width) return this.cache.lines;
+  override render(width: number): string[] {
+    if (this.borderCache && this.borderCache.width === width) return this.borderCache.lines;
 
     const bc = this.borderChars;
     const innerWidth = Math.max(1, width - 2);
@@ -232,106 +263,119 @@ export class BorderBox implements Component {
     const padT = this.padding.top ?? 0;
     const padB = this.padding.bottom ?? 0;
     const childInnerWidth = Math.max(1, innerWidth - padL - padR);
-    const childLines = this.child.render(childInnerWidth);
-    const color = this.borderColor;
+    const border = this.borderFn;
+    const bg = this.outerFn;
+    const innerBg = this.innerFn;
+
+    // Convenience: apply inner background to an inner-width string
+    const applyInnerBg = (s: string): string => (innerBg ? innerBg(s) : s);
+    // Convenience: apply full-line background
+    const applyFullBg = (s: string): string => (bg ? bg(s) : s);
+
+    // Render all children stacked vertically inside the border
+    const childLines: string[] = [];
+    for (const child of this.children) {
+      const lines = child.render(childInnerWidth);
+      for (const line of lines) {
+        const rem = Math.max(0, childInnerWidth - visibleWidth(line));
+        childLines.push(applyInnerBg(" ".repeat(padL) + line + " ".repeat(rem + padR)));
+      }
+    }
 
     const lines: string[] = [];
 
     // Top border
     lines.push(
-      buildBorderLine({
-        leftCorner: bc.tl,
-        rightCorner: bc.tr,
-        innerWidth,
-        totalWidth: width,
-        hChar: bc.h,
-        color,
-        textDefs: this.titles,
-      }),
+      applyFullBg(
+        buildBorderLine({
+          leftCorner: bc.tl,
+          rightCorner: bc.tr,
+          innerWidth,
+          totalWidth: width,
+          hChar: bc.h,
+          borderFn: border,
+          textDefs: this.titles,
+        }),
+      ),
     );
 
     // PaddingY top
     for (let i = 0; i < padT; i++) {
+      const inner = applyInnerBg(" ".repeat(innerWidth));
       lines.push(
-        padLine(
-          color
-            ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v)
-            : bc.v + " ".repeat(innerWidth) + bc.v,
-          width,
+        applyFullBg(
+          padLine(border ? border(bc.v) + inner + border(bc.v) : bc.v + inner + bc.v, width),
         ),
       );
     }
 
-    // Content
+    // Content — empty shell when no children or all children return empty
     if (childLines.length === 0) {
+      const inner = applyInnerBg(" ".repeat(innerWidth));
       lines.push(
-        padLine(
-          color
-            ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v)
-            : bc.v + " ".repeat(innerWidth) + bc.v,
-          width,
+        applyFullBg(
+          padLine(border ? border(bc.v) + inner + border(bc.v) : bc.v + inner + bc.v, width),
         ),
       );
     } else {
       for (const line of childLines) {
-        const childPad = Math.max(
-          0,
-          innerWidth - padL - padR - childInnerWidth + (childInnerWidth - visibleWidth(line)),
-        );
-        const padded = " ".repeat(padL) + line + " ".repeat(childPad + padR);
         lines.push(
-          padLine(color ? color(bc.v) + padded + color(bc.v) : bc.v + padded + bc.v, width),
+          applyFullBg(
+            padLine(border ? border(bc.v) + line + border(bc.v) : bc.v + line + bc.v, width),
+          ),
         );
       }
     }
 
     // PaddingY bottom
     for (let i = 0; i < padB; i++) {
+      const inner = applyInnerBg(" ".repeat(innerWidth));
       lines.push(
-        padLine(
-          color
-            ? color(bc.v) + " ".repeat(innerWidth) + color(bc.v)
-            : bc.v + " ".repeat(innerWidth) + bc.v,
-          width,
+        applyFullBg(
+          padLine(border ? border(bc.v) + inner + border(bc.v) : bc.v + inner + bc.v, width),
         ),
       );
     }
 
     // Bottom border
     lines.push(
-      buildBorderLine({
-        leftCorner: bc.bl,
-        rightCorner: bc.br,
-        innerWidth,
-        totalWidth: width,
-        hChar: bc.h,
-        color,
-        textDefs: this.footers,
-      }),
+      applyFullBg(
+        buildBorderLine({
+          leftCorner: bc.bl,
+          rightCorner: bc.br,
+          innerWidth,
+          totalWidth: width,
+          hChar: bc.h,
+          borderFn: border,
+          textDefs: this.footers,
+        }),
+      ),
     );
 
-    this.cache = { lines, width };
+    this.borderCache = { lines, width };
     return lines;
   }
 
   /**
-   * Forward input data to the child component.
-   * Invalidates the render cache so the next render() picks up child state changes.
+   * Forward input data to all children. Invalidates the render cache
+   * so the next render() picks up child state changes.
    *
-   * @param data - Input string forwarded to the child's handleInput, if defined.
+   * @param data - Input string forwarded to each child's handleInput, if defined.
    */
   handleInput(data: string): void {
-    this.child.handleInput?.(data);
+    for (const child of this.children) {
+      child.handleInput?.(data);
+    }
     this.invalidate();
   }
 
   /**
    * Invalidate the render cache, forcing a full re-render on the next call.
-   * Propagates invalidation to the child component as well.
+   * Propagates invalidation to all children.
    */
-  invalidate(): void {
-    this.cache = null;
-    this.child.invalidate();
+  override invalidate(): void {
+    this.borderCache = null;
+    super.invalidate();
   }
 
   /** Convenience getter for the current border character set. */
