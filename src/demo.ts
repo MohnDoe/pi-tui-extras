@@ -9,46 +9,50 @@ function main() {
   const root = new Container();
 
   // Single border with title
-  root.addChild(
-    new BorderBox(new Text("Hello from BorderBox!", 1, 0), {
-      titles: [{ text: "Demo", align: "left" }],
-    }),
+  const box1 = new BorderBox({
+    titles: [{ text: "Demo", align: "left" }],
+  });
+  box1.addChild(new Text("Hello from BorderBox!", 1, 0));
+  root.addChild(box1);
+
+  const box2 = new BorderBox({
+    borderStyle: "heavy",
+    titles: [{ text: "Wrap supreme", align: "left" }],
+    padding: { left: 2 },
+  });
+  box2.addChild(
+    new Text("The text will wrap and the border box will grow in height to fit it.", 0, 0),
   );
-  root.addChild(
-    new BorderBox(
-      new Text("The text will wrap and the border box will grow in height to fit it.", 0, 0),
-      {
-        borderStyle: "heavy",
-        titles: [{ text: "Wrap supreme", align: "left" }],
-        padding: {
-          left: 2,
-        },
-      },
-    ),
-  );
+  root.addChild(box2);
 
   // Blank line between boxes
   root.addChild(new Text("", 0, 0));
 
   // Rounded border with left+right titles
-  root.addChild(
-    new BorderBox(new Text("Rounded corners", 1, 0), {
-      borderStyle: "singleRounded",
-      borderColor: chalk.blue,
-      titles: [
-        { text: chalk.yellow("Left yellow"), align: "left" },
-        { text: "Right", align: "right" },
-      ],
-      footers: [{ text: "Footer", align: "center" }],
-    }),
-  );
+  const box3 = new BorderBox({
+    borderStyle: "singleRounded",
+    borderColor: chalk.blue,
+    titles: [
+      { text: chalk.yellow("Left yellow"), align: "left" },
+      { text: "Right", align: "right" },
+    ],
+    footers: [{ text: "Footer", align: "center" }],
+  });
+  box3.addChild(new Text("Rounded corners", 1, 0));
+  root.addChild(box3);
 
-  root.addChild(
-    new BorderBox(new Text("No title, no footer", 1, 0), {
-      borderStyle: "double",
-      borderColor: chalk.red,
-    }),
-  );
+  const box4 = new BorderBox({
+    borderStyle: "double",
+    borderColor: chalk.red,
+    padding: {
+      top: 0,
+      bottom: 3,
+      left: 7,
+      right: 0,
+    },
+  });
+  box4.addChild(new Text("No title, no footer, and asymetrical padding"));
+  root.addChild(box4);
 
   tui.addChild(root);
 

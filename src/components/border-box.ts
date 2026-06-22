@@ -1,5 +1,4 @@
-import type { Component } from "@mariozechner/pi-tui";
-import { visibleWidth } from "@mariozechner/pi-tui";
+import { Box, type Component, visibleWidth } from "@mariozechner/pi-tui";
 import { truncate } from "../core/truncate";
 import { padLine } from "../core/pad-line";
 import { alignInWidth, alignInWidthLR } from "../core/align";
@@ -17,7 +16,7 @@ export interface TextDef {
   align: TextAlign;
 }
 
-/** Optional inner padding around the child component. */
+/** Optional inner padding around children. */
 export interface Padding {
   left?: number;
   right?: number;
@@ -174,18 +173,24 @@ function buildBorderLine(opts: BorderLineOptions): string {
 }
 
 /**
- * Renders a child component wrapped in a configurable box-drawing border.
+ * Renders children wrapped in a configurable box-drawing border.
  *
  * Supports four border styles (single, singleRounded, double, heavy),
  * optional colored borders, up to two titles/footers per edge, and
- * configurable inner padding. Render output is cached per-width for
- * performance and invalidated on input.
+ * configurable inner padding. Extends {@link Box} so `addChild`,
+ * `removeChild`, and `clear` work as expected. Render output is cached
+ * per-width for performance and invalidated on input.
+ *
+ * @example
+ * ```ts
+ * const box = new BorderBox({ borderStyle: "singleRounded", titles: [{ text: "Info", align: "left" }] });
+ * box.addChild(new Text("Hello", 0, 0));
+ * const lines = box.render(20);
+ * ```
  */
-export class BorderBox implements Component {
+export class BorderBox extends Box {
   /** Cached render output, keyed by width. Cleared on invalidate(). */
-  private cache: { lines: string[]; width: number } | null = null;
-  /** The wrapped child component rendered inside the border. */
-  private readonly child: Component;
+  private borderCache: { lines: string[]; width: number } | null = null;
   /** Selected box-drawing character set. */
   private readonly borderStyle: BorderStyle;
   /** Optional function to wrap border characters with color/ANSI. */
@@ -194,19 +199,20 @@ export class BorderBox implements Component {
   private readonly titles?: TextDef[];
   /** Optional footer entries drawn on the bottom border edge. */
   private readonly footers?: TextDef[];
-  /** Normalised padding (clamped ≥ 0) between border and child. */
+  /** Normalised padding (clamped ≥ 0) between border and children. */
   private readonly padding: Padding;
 
   /**
-   * @param child - Component to render inside the border.
    * @param options - Border style, color, titles/footers, and padding.
    * @throws If titles/footers violate constraints (>2, or 2 not left+right).
    */
-  constructor(child: Component, options: BorderBoxOptions = {}) {
+  constructor(options: BorderBoxOptions = {}) {
+    // Box padding is unused — BorderBox applies its own via Padding.
+    super(0, 0);
+
     if (options.titles) validateTitles(options.titles);
     if (options.footers) validateTitles(options.footers);
 
-    this.child = child;
     this.borderStyle = options.borderStyle ?? "single";
     this.borderColor = options.borderColor;
     this.titles = options.titles;
@@ -222,8 +228,8 @@ export class BorderBox implements Component {
     };
   }
 
-  render(width: number): string[] {
-    if (this.cache && this.cache.width === width) return this.cache.lines;
+  override render(width: number): string[] {
+    if (this.borderCache && this.borderCache.width === width) return this.borderCache.lines;
 
     const bc = this.borderChars;
     const innerWidth = Math.max(1, width - 2);
@@ -232,8 +238,17 @@ export class BorderBox implements Component {
     const padT = this.padding.top ?? 0;
     const padB = this.padding.bottom ?? 0;
     const childInnerWidth = Math.max(1, innerWidth - padL - padR);
-    const childLines = this.child.render(childInnerWidth);
     const color = this.borderColor;
+
+    // Render all children stacked vertically inside the border
+    const childLines: string[] = [];
+    for (const child of this.children) {
+      const lines = child.render(childInnerWidth);
+      for (const line of lines) {
+        const rem = Math.max(0, childInnerWidth - visibleWidth(line));
+        childLines.push(" ".repeat(padL) + line + " ".repeat(rem + padR));
+      }
+    }
 
     const lines: string[] = [];
 
@@ -262,7 +277,7 @@ export class BorderBox implements Component {
       );
     }
 
-    // Content
+    // Content — empty shell when no children or all children return empty
     if (childLines.length === 0) {
       lines.push(
         padLine(
@@ -274,13 +289,8 @@ export class BorderBox implements Component {
       );
     } else {
       for (const line of childLines) {
-        const childPad = Math.max(
-          0,
-          innerWidth - padL - padR - childInnerWidth + (childInnerWidth - visibleWidth(line)),
-        );
-        const padded = " ".repeat(padL) + line + " ".repeat(childPad + padR);
         lines.push(
-          padLine(color ? color(bc.v) + padded + color(bc.v) : bc.v + padded + bc.v, width),
+          padLine(color ? color(bc.v) + line + color(bc.v) : bc.v + line + bc.v, width),
         );
       }
     }
@@ -310,28 +320,30 @@ export class BorderBox implements Component {
       }),
     );
 
-    this.cache = { lines, width };
+    this.borderCache = { lines, width };
     return lines;
   }
 
   /**
-   * Forward input data to the child component.
-   * Invalidates the render cache so the next render() picks up child state changes.
+   * Forward input data to all children. Invalidates the render cache
+   * so the next render() picks up child state changes.
    *
-   * @param data - Input string forwarded to the child's handleInput, if defined.
+   * @param data - Input string forwarded to each child's handleInput, if defined.
    */
   handleInput(data: string): void {
-    this.child.handleInput?.(data);
+    for (const child of this.children) {
+      child.handleInput?.(data);
+    }
     this.invalidate();
   }
 
   /**
    * Invalidate the render cache, forcing a full re-render on the next call.
-   * Propagates invalidation to the child component as well.
+   * Propagates invalidation to all children.
    */
-  invalidate(): void {
-    this.cache = null;
-    this.child.invalidate();
+  override invalidate(): void {
+    this.borderCache = null;
+    super.invalidate();
   }
 
   /** Convenience getter for the current border character set. */
