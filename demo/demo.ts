@@ -1,10 +1,41 @@
 import { Container, ProcessTerminal, Spacer, Text, TUI } from "@mariozechner/pi-tui";
-import { BorderBox } from "./components/border-box";
+import { BorderBox } from "../src/components/border-box";
 import chalk from "chalk";
+
+let tui: TUI | undefined;
+
+function cleanup() {
+  tui?.stop();
+  tui = undefined;
+}
+
+process.on("SIGTERM", () => {
+  cleanup();
+  process.exit(0);
+});
+process.on("SIGINT", () => {
+  cleanup();
+  process.exit(0);
+});
+process.on("SIGQUIT", () => {
+  cleanup();
+  process.exit(0);
+});
+
+process.on("uncaughtException", (err) => {
+  cleanup();
+  console.error(err);
+  process.exit(1);
+});
+process.on("unhandledRejection", (reason) => {
+  cleanup();
+  console.error(reason);
+  process.exit(1);
+});
 
 function main() {
   const terminal = new ProcessTerminal();
-  const tui = new TUI(terminal);
+  tui = new TUI(terminal);
 
   const root = new Container();
 
@@ -20,9 +51,7 @@ function main() {
     titles: [{ text: "Wrap supreme", align: "left" }],
     padding: { left: 2 },
   });
-  box2.addChild(
-    new Text("The text will wrap and the border box will grow in height to fit it.", 0, 0),
-  );
+  box2.addChild(new Text("The will wrap and the border box will grow in height to fit it.", 0, 0));
   root.addChild(box2);
 
   // Blank line between boxes
@@ -69,8 +98,9 @@ function main() {
   tui.addChild(root);
 
   tui.addInputListener((data) => {
-    if (data === "q" || data === "\x1b") {
-      tui.stop();
+    // q to quit
+    if (data === "q") {
+      tui!.stop();
       process.exit(0);
     }
     return { consume: true };

@@ -16,7 +16,8 @@
     "build": "bunx tsc -p tsconfig.json",
     "build:watch": "bunx tsc -p tsconfig.json --watch",
     "typecheck": "bunx tsc --noEmit",
-    "demo": "bun run src/demo.ts",
+    "demo": "bun run demo/demo.ts",
+    "demo:watch": "bun run demo/demo-watch.ts",
     "test": "bun test"
   },
   "devDependencies": {
