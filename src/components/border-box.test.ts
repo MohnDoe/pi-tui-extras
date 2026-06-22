@@ -338,10 +338,10 @@ describe("BorderBox", () => {
   });
 
   describe("styling options", () => {
-    it("applies bgFn background to inner content area", () => {
+    it("applies innerBgFn to inner content area", () => {
       // ANSI-reset wrapper simulates zero-width styling
-      const bg = (s: string) => `\x1b[44m${s}\x1b[49m`;
-      const box = new BorderBox({ bgFn: bg });
+      const innerBg = (s: string) => `\x1b[44m${s}\x1b[49m`;
+      const box = new BorderBox({ innerBgFn: innerBg });
       box.addChild(new Text("X", 0, 0));
 
       const lines = box.render(3);
@@ -350,9 +350,9 @@ describe("BorderBox", () => {
       expect(lines[1]).toBe("│\x1b[44mX\x1b[49m│");
     });
 
-    it("bgFn applies to empty inner area (no children)", () => {
-      const bg = (s: string) => `[${s}]`;
-      const box = new BorderBox({ bgFn: bg });
+    it("innerBgFn applies to empty inner area (no children)", () => {
+      const innerBg = (s: string) => `[${s}]`;
+      const box = new BorderBox({ innerBgFn: innerBg });
 
       const lines = box.render(3);
 
@@ -360,9 +360,9 @@ describe("BorderBox", () => {
       expect(lines[1]).toBe("│[ ]│");
     });
 
-    it("bgFn applies to padding lines", () => {
-      const bg = (s: string) => `<${s}>`;
-      const box = new BorderBox({ bgFn: bg, padding: { top: 1 } });
+    it("innerBgFn applies to padding lines", () => {
+      const innerBg = (s: string) => `<${s}>`;
+      const box = new BorderBox({ innerBgFn: innerBg, padding: { top: 1 } });
       box.addChild(new Text("X", 0, 0));
 
       const lines = box.render(3);
@@ -371,17 +371,47 @@ describe("BorderBox", () => {
       expect(lines[1]).toBe("│< >│");
     });
 
-    it("both borderFn and bgFn can be set together", () => {
+    it("bgFn wraps every complete line (including borders)", () => {
+      const bg = (s: string) => `[${s}]`;
+      const box = new BorderBox({ bgFn: bg });
+      box.addChild(new Text("X", 0, 0));
+
+      const lines = box.render(3);
+
+      // Each full line gets wrapped: "[┌─┐]", "[│X│]", "[└─┘]"
+      // visibleWidth stays 3 (brackets + content + brackets = 5 > 3?)
+      // Actually brackets add visible width — padLine won't truncate.
+      // Real usage uses zero-width ANSI — this test uses visible chars
+      // just to prove the wrapping layer exists.
+      expect(lines[0]).toBe("[┌─┐]");
+      expect(lines[1]).toBe("[│X│]");
+      expect(lines[2]).toBe("[└─┘]");
+    });
+
+    it("both borderFn and innerBgFn can be set together", () => {
       // Zero-width ANSI wrappers simulate real chalk usage
       const border = (s: string) => `\x1b[31m${s}\x1b[39m`;
-      const bg = (s: string) => `\x1b[44m${s}\x1b[49m`;
-      const box = new BorderBox({ borderFn: border, bgFn: bg });
+      const innerBg = (s: string) => `\x1b[44m${s}\x1b[49m`;
+      const box = new BorderBox({ borderFn: border, innerBgFn: innerBg });
       box.addChild(new Text("X", 0, 0));
 
       const lines = box.render(3);
 
       // │ (red) + X (blue bg) + │ (red)
       expect(lines[1]).toBe("\x1b[31m│\x1b[39m\x1b[44mX\x1b[49m\x1b[31m│\x1b[39m");
+    });
+
+    it("both bgFn and innerBgFn can be set together", () => {
+      const bg = (s: string) => `{${s}}`;
+      const innerBg = (s: string) => `[${s}]`;
+      const box = new BorderBox({ bgFn: bg, innerBgFn: innerBg });
+      box.addChild(new Text("X", 0, 0));
+
+      const lines = box.render(3);
+
+      // First innerBg wraps "X" → "[X]", then assembled as "│[X]│",
+      // then bg wraps the full line → "{│[X]│}"
+      expect(lines[1]).toBe("{│[X]│}");
     });
   });
 

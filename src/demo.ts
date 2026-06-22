@@ -54,6 +54,14 @@ function main() {
   box4.addChild(new Text("No title, no footer, and asymetrical padding"));
   root.addChild(box4);
 
+  const box5 = new BorderBox({
+    borderStyle: "singleRounded",
+    innerBgFn: chalk.white,
+    titles: [{ text: "chalk.white innerBg", align: "left" }],
+  });
+  box5.addChild(new Text("Inner area background via innerBgFn", 1, 1));
+  root.addChild(box5);
+
   tui.addChild(root);
 
   tui.addInputListener((data) => {

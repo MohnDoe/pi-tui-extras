@@ -37,13 +37,21 @@ export interface BorderBoxOptions {
    */
   borderFn?: (text: string) => string;
   /**
-   * Apply ANSI or custom background styling to the inner content area
-   * (between the border edges). Receives the full inner line (padded to
-   * width) and returns the styled version.
+   * Apply ANSI or custom background styling to every full line of output
+   * (including border characters). Applied last — wraps each complete line
+   * at full width after all decorations are assembled.
    *
    * @example `chalk.bgBlue`
    */
   bgFn?: (text: string) => string;
+  /**
+   * Apply ANSI or custom background styling to the content area inside
+   * the border (between the vertical edges). Applied before border
+   * characters are added.
+   *
+   * @example `chalk.bgBlue`
+   */
+  innerBgFn?: (text: string) => string;
   /** Titles drawn on the top border (max 2: left + right). */
   titles?: TextDef[];
   /** Footers drawn on the bottom border (max 2: left + right). */
@@ -184,11 +192,12 @@ function buildBorderLine(opts: BorderLineOptions): string {
  * Renders children wrapped in a configurable box-drawing border.
  *
  * Supports four border styles (single, singleRounded, double, heavy),
- * optional borderFn for border styling, optional bgFn for inner content
- * background, up to two titles/footers per edge, and configurable inner
- * padding. Extends {@link Box} so `addChild`, `removeChild`, and `clear`
- * work as expected. Render output is cached per-width for performance and
- * invalidated on input.
+ * optional borderFn for border styling, optional bgFn for full-line
+ * background, optional innerBgFn for content-area background, up to two
+ * titles/footers per edge, and configurable inner padding. Extends
+ * {@link Box} so `addChild`, `removeChild`, and `clear` work as expected.
+ * Render output is cached per-width for performance and invalidated on
+ * input.
  *
  * @example
  * ```ts
@@ -204,8 +213,10 @@ export class BorderBox extends Box {
   private readonly borderStyle: BorderStyle;
   /** Optional styling function for border characters. */
   private readonly borderFn?: (text: string) => string;
-  /** Optional background function for the inner content area. */
-  private readonly innerBg?: (text: string) => string;
+  /** Optional background function for complete lines. */
+  private readonly outerBgFn?: (text: string) => string;
+  /** Optional background function for inner content area. */
+  private readonly innerBgFn?: (text: string) => string;
   /** Optional title entries drawn on the top border edge. */
   private readonly titles?: TextDef[];
   /** Optional footer entries drawn on the bottom border edge. */
@@ -219,15 +230,15 @@ export class BorderBox extends Box {
    */
   constructor(options: BorderBoxOptions = {}) {
     // Box padding is unused — BorderBox applies its own via Padding.
-    // Pass bgFn to Box for conceptual correctness (Box stores it privately).
-    super(0, 0, options.bgFn);
+    super(0, 0);
 
     if (options.titles) validateTitles(options.titles);
     if (options.footers) validateTitles(options.footers);
 
     this.borderStyle = options.borderStyle ?? "single";
     this.borderFn = options.borderFn;
-    this.innerBg = options.bgFn;
+    this.outerBgFn = options.bgFn;
+    this.innerBgFn = options.innerBgFn;
     this.titles = options.titles;
     this.footers = options.footers;
 
@@ -252,10 +263,13 @@ export class BorderBox extends Box {
     const padB = this.padding.bottom ?? 0;
     const childInnerWidth = Math.max(1, innerWidth - padL - padR);
     const border = this.borderFn;
-    const bg = this.innerBg;
+    const bg = this.outerBgFn;
+    const innerBg = this.innerBgFn;
 
-    // Convenience: apply background to an inner-width string
-    const applyBg = (s: string): string => (bg ? bg(s) : s);
+    // Convenience: apply inner background to an inner-width string
+    const applyInnerBg = (s: string): string => (innerBg ? innerBg(s) : s);
+    // Convenience: apply full-line background
+    const applyFullBg = (s: string): string => (bg ? bg(s) : s);
 
     // Render all children stacked vertically inside the border
     const childLines: string[] = [];
@@ -263,7 +277,7 @@ export class BorderBox extends Box {
       const lines = child.render(childInnerWidth);
       for (const line of lines) {
         const rem = Math.max(0, childInnerWidth - visibleWidth(line));
-        childLines.push(applyBg(" ".repeat(padL) + line + " ".repeat(rem + padR)));
+        childLines.push(applyInnerBg(" ".repeat(padL) + line + " ".repeat(rem + padR)));
       }
     }
 
@@ -271,49 +285,42 @@ export class BorderBox extends Box {
 
     // Top border
     lines.push(
-      buildBorderLine({
-        leftCorner: bc.tl,
-        rightCorner: bc.tr,
-        innerWidth,
-        totalWidth: width,
-        hChar: bc.h,
-        borderFn: border,
-        textDefs: this.titles,
-      }),
+      applyFullBg(
+        buildBorderLine({
+          leftCorner: bc.tl,
+          rightCorner: bc.tr,
+          innerWidth,
+          totalWidth: width,
+          hChar: bc.h,
+          borderFn: border,
+          textDefs: this.titles,
+        }),
+      ),
     );
 
     // PaddingY top
     for (let i = 0; i < padT; i++) {
-      const inner = applyBg(" ".repeat(innerWidth));
+      const inner = applyInnerBg(" ".repeat(innerWidth));
       lines.push(
-        padLine(
-          border
-            ? border(bc.v) + inner + border(bc.v)
-            : bc.v + inner + bc.v,
-          width,
+        applyFullBg(
+          padLine(border ? border(bc.v) + inner + border(bc.v) : bc.v + inner + bc.v, width),
         ),
       );
     }
 
     // Content — empty shell when no children or all children return empty
     if (childLines.length === 0) {
-      const inner = applyBg(" ".repeat(innerWidth));
+      const inner = applyInnerBg(" ".repeat(innerWidth));
       lines.push(
-        padLine(
-          border
-            ? border(bc.v) + inner + border(bc.v)
-            : bc.v + inner + bc.v,
-          width,
+        applyFullBg(
+          padLine(border ? border(bc.v) + inner + border(bc.v) : bc.v + inner + bc.v, width),
         ),
       );
     } else {
       for (const line of childLines) {
         lines.push(
-          padLine(
-            border
-              ? border(bc.v) + line + border(bc.v)
-              : bc.v + line + bc.v,
-            width,
+          applyFullBg(
+            padLine(border ? border(bc.v) + line + border(bc.v) : bc.v + line + bc.v, width),
           ),
         );
       }
@@ -321,28 +328,27 @@ export class BorderBox extends Box {
 
     // PaddingY bottom
     for (let i = 0; i < padB; i++) {
-      const inner = applyBg(" ".repeat(innerWidth));
+      const inner = applyInnerBg(" ".repeat(innerWidth));
       lines.push(
-        padLine(
-          border
-            ? border(bc.v) + inner + border(bc.v)
-            : bc.v + inner + bc.v,
-          width,
+        applyFullBg(
+          padLine(border ? border(bc.v) + inner + border(bc.v) : bc.v + inner + bc.v, width),
         ),
       );
     }
 
     // Bottom border
     lines.push(
-      buildBorderLine({
-        leftCorner: bc.bl,
-        rightCorner: bc.br,
-        innerWidth,
-        totalWidth: width,
-        hChar: bc.h,
-        borderFn: border,
-        textDefs: this.footers,
-      }),
+      applyFullBg(
+        buildBorderLine({
+          leftCorner: bc.bl,
+          rightCorner: bc.br,
+          innerWidth,
+          totalWidth: width,
+          hChar: bc.h,
+          borderFn: border,
+          textDefs: this.footers,
+        }),
+      ),
     );
 
     this.borderCache = { lines, width };
